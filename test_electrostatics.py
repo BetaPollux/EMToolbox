@@ -14,7 +14,7 @@ class TestSequenceFunctions(unittest.TestCase):
         pass
 
     def test_3dvector(self):
-        # Schaum P2.7
+        # Schaum Electromagnetics 2e  P2.7
         q = 64.4e-9
         rf = np.array([0.0, 0.0, 0.0])
         rq = np.array([-4.0, 3.0, 2.0])
@@ -56,7 +56,7 @@ class TestSequenceFunctions(unittest.TestCase):
         np.testing.assert_allclose(E, expected, rtol=0.001)
 
     def test_3dvector_coll(self):
-        # Schaum P2.8
+        # Schaum Electromagnetics 2e P2.8
         rf = np.array([0.0, 0.0, 5.0])
         rq = np.array([[0.0, 4.0, 0.0],
                        [3.0, 0.0, 0.0]])
@@ -68,7 +68,7 @@ class TestSequenceFunctions(unittest.TestCase):
         np.testing.assert_allclose(E, expected, rtol=0.01)
 
     def test_line(self):
-        # Schaum P2.10
+        # Schaum Electromagnetics 2e P2.10
         ql = 20e-9
         rq = np.array([2.0, -4.0, 0.0])
         nq = np.array([0.0, 0.0, 1.0])
@@ -80,7 +80,7 @@ class TestSequenceFunctions(unittest.TestCase):
         np.testing.assert_allclose(E, expected, rtol=0.01)
 
     def test_line_two(self):
-        # Schaum P3.9
+        # Schaum Electromagnetics 2e P3.9
         ql = 20e-6
         rq = np.zeros(3)
         nq1 = np.array([1.0, 0.0, 0.0])
@@ -94,7 +94,7 @@ class TestSequenceFunctions(unittest.TestCase):
         np.testing.assert_allclose(E, expected, rtol=0.01)
 
     def test_plane(self):
-        # Schaum P2.24
+        # Schaum Electromagnetics 2e P2.24
         qs = 0.3e-9
         rq = np.array([3.0, 0.0, 0.0])
         nq = np.array([2.0, -3.0, 1.0]) / np.sqrt(14)
@@ -110,6 +110,32 @@ class TestSequenceFunctions(unittest.TestCase):
         np.testing.assert_allclose(E1, expected, rtol=0.01)
         np.testing.assert_allclose(E2, -expected, rtol=0.01)
         np.testing.assert_allclose(E3, np.zeros(3), rtol=0.01)
+
+    def test_ring(self):
+        # Schaum Electromagnetics 2e P2.47
+        ql = 10e-9
+        rq = np.zeros(3)
+        nq = np.array([0.0, 0.0, 1.0])
+        a = 2
+        rf = np.array([0.0, 0.0, 5.0])
+        E = efield_ring(ql, rq, nq, a, rf)
+
+        expected = efield_point(100.5e-9, rq, rf)
+
+        np.testing.assert_allclose(E, expected, rtol=0.01)
+
+    def test_disk(self):
+        # Schaum Electromagnetics 2e P2.4
+        a = 5
+        qs = 500e-6 / a ** 2
+        rq = np.zeros(3)
+        nq = np.array([0.0, 0.0, 1.0])
+        rf = np.array([0.0, 0.0, 5.0])
+        E = efield_disk(qs, rq, nq, a, rf)
+
+        expected = np.array([0.0, 0.0, (16.56 / 50e-6)])
+
+        np.testing.assert_allclose(E, expected, rtol=0.01)
 
 
 if __name__ == '__main__':
