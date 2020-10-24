@@ -62,6 +62,7 @@ class Grid1D:
 
 class Gaussian:
     def __init__(self, amplitude, t0, spread):
+        self.amplitude = amplitude
         self.spread = spread
         self.t0 = t0
 
@@ -79,6 +80,28 @@ class Sinusoid:
         return self.amplitude * np.sin(2 * np.pi * self.freq * time)
 
 
+class SinusoidalGauss:
+    """
+    Sinusoidally-modulated Gaussian Pulse
+    f1 = lower frequency limit
+    f2 = upper frequency limit
+    bbw = minimum pulse level that is unaffected by computational noise
+    bt = maximum allowable pulse level at t = 0
+    bf = maximum allowable DC component in frequency domain
+    """
+    def __init__(self, f1, f2, bbw=0.0001, bt=0.001, bf=0.001):
+        self.fc = 0.5 * (f1 + f2)
+        self.alpha = np.pi * (f2 - f1) / np.sqrt(-np.log(bbw))
+        self.t0 = np.sqrt(-np.log(bt)) / self.alpha
+
+        if self.fc < self.alpha * np.pi / np.sqrt(-np.log(bf)):
+            raise Exception('DC component exceeds allowable limit bf')
+
+    def solve(self, time):
+        return np.exp(-(self.alpha ** 2) * (time - self.t0) ** 2) \
+               * np.cos(2 * np.pi * self.fc * (time - self.t0))
+
+
 def animate(i, *fargs):
     line = fargs[0]
     data = fargs[1]
@@ -87,13 +110,14 @@ def animate(i, *fargs):
 
 
 def main():
-    total_time = 10e-9
-    n_frames = 125
+    total_time = 20e-9
+    n_frames = 250
     ndz = 200
     grid = Grid1D(ndz, 2.0)
-    grid.set_material(1.0, 1.5, er=8.0, cond=0.01)
+    grid.set_material(1.0, 1.5, er=4.0, cond=0.04)
     # source = Gaussian(1.0, 40 * grid.dt, 12 * grid.dt)
-    source = Sinusoid(1.0, 700e6)
+    # source = Sinusoid(1.0, 700e6)
+    source = SinusoidalGauss(1e9, 2e9)
     grid.add_source(source, 5)
     grid.solve(total_time, n_frames)
 
@@ -106,7 +130,7 @@ def main():
 
     fig2, ax2 = plt.subplots()
     ax2.set_ylim(-2, 2)
-    eline, = ax2.plot(grid.ex)
+    eline, = ax2.plot(grid.z, grid.ex)
     ax2.set_ylabel('Ex')
     ax2.set_xlabel('z (m)')
     ani = animation.FuncAnimation(
