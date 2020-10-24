@@ -5,19 +5,26 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+eps0 = 8.8541878176e-12
+
 
 class Grid1D:
-    def __init__(self, ndx, width):
-        self.ndx = ndx
-        self.x, self.dx = np.linspace(0, width, ndx, retstep=True)
-        self.dt = self.dx / (2 * 3e8)
-        self.ex = np.zeros(ndx)
-        self.hy = np.zeros(ndx)
-        self.cb = 0.5 * np.ones(ndx)
-        er = 4.0
-        self.cb[self.x > width/2] /= er
+    def __init__(self, ndz, width):
+        self.ndz = ndz
+        self.z, self.dz = np.linspace(0, width, ndz, retstep=True)
+        self.dt = self.dz / (2 * 3e8)
+        self.ex = np.zeros(ndz)
+        self.hy = np.zeros(ndz)
+        self.ca = np.ones(ndz)
+        self.cb = 0.5 * np.ones(ndz)
         self.sources = []
         self.data = []
+
+    def set_material(self, start, stop, er=1.0, cond=0.0):
+        indices = (self.z >= start) & (self.z <= stop)
+        eaf = self.dt * cond / (2 * eps0 * er)
+        self.ca[indices] = (1 - eaf) / (1 + eaf)
+        self.cb[indices] = 0.5 / (er * (1 + eaf))
 
     def solve(self, total_time, n_frames=125):
         self.t = np.arange(total_time, step=self.dt)
@@ -28,9 +35,9 @@ class Grid1D:
         abc_right = [0, 0]
 
         for time_id, time in enumerate(self.t):
-            for i in range(1, self.ndx):
-                self.ex[i] = self.ex[i] + self.cb[i] * (
-                              self.hy[i - 1] - self.hy[i])
+            for i in range(1, self.ndz):
+                self.ex[i] = self.ca[i] * self.ex[i] + self.cb[i] * (
+                             self.hy[i - 1] - self.hy[i])
 
             for source in self.sources:
                 self.ex[source['position']] += source['source'].solve(time)
@@ -40,16 +47,16 @@ class Grid1D:
             self.ex[-1] = abc_right.pop()
             abc_right.insert(0, self.ex[-2])
 
-            for i in range(self.ndx - 1):
+            for i in range(self.ndz - 1):
                 self.hy[i] = self.hy[i] + 0.5 * (
-                              self.ex[i] - self.ex[i + 1])
+                             self.ex[i] - self.ex[i + 1])
 
             if time_id in frame_ids:
                 self.data.append(self.ex.copy())
 
-    def add_source(self, source, x):
+    def add_source(self, source, z):
         self.sources.append({'source': source,
-                             'position': x
+                             'position': z
                              })
 
 
@@ -80,27 +87,28 @@ def animate(i, *fargs):
 
 
 def main():
-    total_time = 8e-9
+    total_time = 10e-9
     n_frames = 125
-    ndx = 200
-    grid = Grid1D(ndx, 2.0)
+    ndz = 200
+    grid = Grid1D(ndz, 2.0)
+    grid.set_material(1.0, 1.5, er=8.0, cond=0.01)
     # source = Gaussian(1.0, 40 * grid.dt, 12 * grid.dt)
     source = Sinusoid(1.0, 700e6)
     grid.add_source(source, 5)
     grid.solve(total_time, n_frames)
 
     fig, axes = plt.subplots(2, 1, sharex=True)
-    axes[0].plot(grid.x, grid.ex)
+    axes[0].plot(grid.z, grid.ex)
     axes[0].set_ylabel('Ex')
-    axes[1].plot(grid.x, grid.hy)
+    axes[1].plot(grid.z, grid.hy)
     axes[1].set_ylabel('Hy')
-    axes[1].set_xlabel('Position (m)')
+    axes[1].set_xlabel('z (m)')
 
     fig2, ax2 = plt.subplots()
     ax2.set_ylim(-2, 2)
     eline, = ax2.plot(grid.ex)
     ax2.set_ylabel('Ex')
-    ax2.set_xlabel('Position (m)')
+    ax2.set_xlabel('z (m)')
     ani = animation.FuncAnimation(
         fig2, animate, fargs=(eline, grid.data), interval=40,
         blit=True, frames=len(grid.data))
