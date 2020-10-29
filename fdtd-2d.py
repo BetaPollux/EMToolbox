@@ -5,35 +5,41 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.collections as collections
+from matplotlib import cm
 from scipy import fftpack
 
 eps0 = 8.8541878176e-12
 
 
-class Grid1D:
-    """FDTD 1D Grid, TEM propagating along x-axis"""
-    def __init__(self, dx, width):
+class Grid2D:
+    """FDTD 2D Grid, TM Formulation"""
+    def __init__(self, dx, width, length):
         self.dx = dx
-        self.x = np.arange(0.0, width, dx)
+        self.dy = dx    # Square cells
+        self.x = np.arange(0.0, width, self.dx)
+        self.y = np.arange(0.0, length, self.dy)
         self.ndx = len(self.x)
-        self.dt = self.dx / (2 * 3e8)
-        self.ez = np.zeros(self.ndx)
-        self.hy = np.zeros(self.ndx)
-        self.ca = np.ones(self.ndx)
-        self.cb = 0.5 * np.ones(self.ndx)
+        self.ndy = len(self.y)
+        self.dt = min(self.dx, self.dy) / (2 * 3e8)
+        self.ez = np.zeros((self.ndx, self.ndy))
+        self.hx = np.zeros((self.ndx, self.ndy))
+        self.hy = np.zeros((self.ndx, self.ndy))
+        self.ca = np.ones((self.ndx, self.ndy))
+        self.cb = 0.5 * np.ones((self.ndx, self.ndy))
         self.sources = []
         self.probes = []
         self.data = []
 
     def __repr__(self):
-        s = 'ndx {0:}\n'.format(self.ndx) \
-            + 'x   {0:.3e}   m\n'.format(max(self.x)) \
-            + 'dx  {0:.3e}   m\n'.format(self.dx) \
+        s = 'ndx {0:} ndy {1:}\n'.format(self.ndx, self.ndy) \
+            + 'x   {0:.3e} y {1:.3e}   m\n'.format(max(self.x), max(self.y)) \
+            + 'dx  {0:.3e} dy {1:.3e}  m\n'.format(self.dx, self.dy) \
             + 'dt  {0:.3e}   s'.format(self.dt)
         return s
 
     def set_material(self, start, stop, er=1.0, cond=0.0):
-        indices = (self.x >= start) & (self.x <= stop)
+        indices = (self.x >= start[0]) & (self.x <= stop[0]) \
+                  & (self.y >= start[1]) & (self.y <= stop[1])
         eaf = self.dt * cond / (2 * eps0 * er)
         self.ca[indices] = (1 - eaf) / (1 + eaf)
         self.cb[indices] = 0.5 / (er * (1 + eaf))
@@ -45,9 +51,6 @@ class Grid1D:
         for probe in self.probes:
             probe.data = np.zeros(len(self.t))
 
-        abc_left = [0, 0]
-        abc_right = [0, 0]
-
         print('Solving {0} time steps'.format(len(self.t)))
         print_ids = np.linspace(0, len(self.t) - 1, 11, dtype='int64')
 
@@ -58,23 +61,32 @@ class Grid1D:
                     100.0 * time_id / len(self.t)))
 
             for i in range(1, self.ndx):
-                self.ez[i] = self.ca[i] * self.ez[i] + self.cb[i] * (
-                             self.hy[i - 1] - self.hy[i])
+                for j in range(1, self.ndy):
+                    self.ez[i, j] = self.ca[i, j] * self.ez[i, j] + (
+                                    self.cb[i, j] * (self.hy[i, j] -
+                                                     self.hy[i-1, j] -
+                                                     self.hx[i, j] +
+                                                     self.hx[i, j-1]))
 
             for source in self.sources:
-                self.ez[source.position] += source.solve(time)
-
-            self.ez[0] = abc_left.pop()
-            abc_left.insert(0, self.ez[1])
-            self.ez[-1] = abc_right.pop()
-            abc_right.insert(0, self.ez[-2])
+                self.ez[source.position[0],
+                        source.position[1]] += source.solve(time)
 
             for i in range(self.ndx - 1):
-                self.hy[i] = self.hy[i] + 0.5 * (
-                             self.ez[i] - self.ez[i + 1])
+                for j in range(self.ndy - 1):
+                    self.hx[i, j] = self.hx[i, j] + (
+                                    0.5 * (self.ez[i, j] -
+                                           self.ez[i, j+1]))
+
+            for i in range(self.ndx - 1):
+                for j in range(self.ndy - 1):
+                    self.hy[i, j] = self.hy[i, j] + (
+                                    0.5 * (self.ez[i+1, j] -
+                                           self.ez[i, j]))
 
             for probe in self.probes:
-                probe.data[time_id] = self.ez[probe.position]
+                probe.data[time_id] = self.ez[probe.position[0],
+                                              probe.position[1]]
 
             if time_id in frame_ids:
                 self.data.append(self.ez.copy())
@@ -148,10 +160,30 @@ class SinusoidalGauss(Source):
 
 
 def animate(i, *fargs):
-    line = fargs[0]
-    data = fargs[1]
-    line.set_ydata(data[i])
-    return line,
+    fig = fargs[0]
+    ax = fargs[1]
+    surf = fargs[2]
+    grid = fargs[3]
+    X = fargs[4]
+    Y = fargs[5]
+
+    ax.clear()
+    surf = plot_ez(fig, ax, X, Y, grid.data[i])
+
+    return surf,
+
+
+def plot_ez(fig, ax, X, Y, Z):
+    surf_args = {'cmap': cm.coolwarm,
+                 'linewidth': 0,
+                 'antialiased': False}
+    surf = ax.plot_surface(X, Y, Z, **surf_args)
+    ax.set_zlim(0, 1)
+    ax.set_xlabel('x (m)')
+    ax.set_ylabel('y (m)')
+    ax.set_zlabel('Ez')
+
+    return surf
 
 
 def plot_time_freq(yt, time, dt, title):
@@ -187,51 +219,42 @@ def plot_response(input, output, time, dt, title='Response'):
 
 
 def main():
-    total_time = 20e-9
-    n_frames = 250
+    total_time = 2e-9
+    n_frames = 120
     dx = 0.01
-    grid = Grid1D(dx, 2.0)
+    grid = Grid2D(dx, 0.6, 0.6)
     print(grid)
-    grid.set_material(1.0, 1.5, er=4.0, cond=0.04)
-    src_z = 5
-    # source = Gaussian(src_z, 'Gaussian', 1.0, 40 * grid.dt, 12 * grid.dt)
-    # source = Sinusoid(src_z, 'Sine 700 MHz', 1.0, 700e6)
-    source = SinusoidalGauss(src_z, 'Sine-Gauss 700 MHz', 4e8, 1e9)
+    # grid.set_material(1.0, 1.5, er=4.0, cond=0.04)
+    src_pos = np.array([[25], [25]])
+    source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
+    # source = Sinusoid(src_pos, 'Sine 1 GHz', 1.0, 1e9)
+    # source = SinusoidalGauss(src_pos, 'Sine-Gauss 1 GHz', 5e8, 2e9)
     grid.add_source(source)
-    grid.add_probe(Probe(grid.ndx - 5, 'Transmitted'))
+    grid.add_probe(Probe(np.array([[50], [50]]), 'Corner'))
     grid.solve(total_time, n_frames)
 
-    fig, axes = plt.subplots(2, 1, sharex=True)
-    axes[0].plot(grid.x, grid.ez)
-    axes[0].set_ylabel('Ez')
-    axes[1].plot(grid.x, grid.hy)
-    axes[1].set_ylabel('Hy')
-    axes[1].set_xlabel('x (m)')
-
-    fig2, ax2 = plt.subplots()
-    ax2.set_ylim(-2, 2)
-    eline, = ax2.plot(grid.x, grid.ez)
-    ax2.set_ylabel('Ez')
-    ax2.set_xlabel('x (m)')
-    collection = collections.BrokenBarHCollection.span_where(
-        grid.x, ymin=-2, ymax=2, where=grid.cb < 0.5,
-        facecolor='red', alpha=0.5)
-    ax2.add_collection(collection)
-    ani = animation.FuncAnimation(
-        fig2, animate, fargs=(eline, grid.data), interval=40,
-        blit=True, frames=len(grid.data))
-
-    f = r"fdtd-1d.gif"
-    print('Saving', f, '...', end='')
-    writergif = animation.PillowWriter(fps=25)
-    ani.save(f, writer=writergif)
-    print(' done.')
+    X, Y = np.meshgrid(grid.x, grid.y)
 
     source_data = source.solve(grid.t)
     plot_time_freq(source_data, grid.t, grid.dt, 'Source')
     for probe in grid.probes:
         plot_time_freq(probe.data, grid.t, grid.dt, probe.label)
     plot_response(source_data, probe.data, grid.t, grid.dt, 'Response')
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    surf = plot_ez(fig, ax, X, Y, grid.data[0])
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    ani = animation.FuncAnimation(
+        fig, animate, fargs=(fig, ax, surf, grid, X, Y), interval=40,
+        frames=len(grid.data))
+
+    f = r"fdtd-2d.gif"
+    print('Saving', f, '...', end='')
+    writergif = animation.PillowWriter(fps=25)
+    ani.save(f, writer=writergif)
+    print(' done.')
+
     plt.show()
 
 
