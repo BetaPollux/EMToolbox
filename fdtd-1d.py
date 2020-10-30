@@ -174,7 +174,7 @@ def plot_response(input, output, time, dt, title='Response'):
     f = fftpack.fftfreq(len(time), dt)
     Fin = np.abs(fftpack.fft(input))
     Fout = np.abs(fftpack.fft(output))
-    threshold = 1e-3 * max(Fin)  # bad results with low Fin
+    threshold = 1e-6 * max(Fin)  # bad results with low Fin
     mask = np.where((f >= 0) & (Fin > threshold))
     response = 20 * np.log10(Fout[mask] / Fin[mask])
 
@@ -186,17 +186,28 @@ def plot_response(input, output, time, dt, title='Response'):
     ax.grid()
 
 
+def create_shield(thk, er, cond):
+    dx = thk / 10
+    width = 20 * thk
+    grid = Grid1D(dx, width)
+    pos = 0.5 * width
+    grid.set_material(pos, pos + thk, er=er, cond=cond)
+    return grid
+
+
 def main():
     total_time = 20e-9
     n_frames = 250
     dx = 0.01
     grid = Grid1D(dx, 2.0)
-    print(grid)
     grid.set_material(1.0, 1.5, er=4.0, cond=0.04)
+    # grid = create_shield(0.25e-3, 1.0, 11.6e8)
+    print(grid)
+
     src_z = 5
-    # source = Gaussian(src_z, 'Gaussian', 1.0, 40 * grid.dt, 12 * grid.dt)
-    # source = Sinusoid(src_z, 'Sine 700 MHz', 1.0, 700e6)
-    source = SinusoidalGauss(src_z, 'Sine-Gauss 700 MHz', 4e8, 1e9)
+    source = Gaussian(src_z, 'Gaussian', 1.0, 40 * grid.dt, 12 * grid.dt)
+    # source = Sinusoid(src_z, 'Sine', 1.0, 200e6)
+    # source = SinusoidalGauss(src_z, 'Sine-Gauss', 1e7, 1e9)
     grid.add_source(source)
     grid.add_probe(Probe(grid.ndx - 5, 'Transmitted'))
     grid.solve(total_time, n_frames)
