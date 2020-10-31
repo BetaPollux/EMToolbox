@@ -13,19 +13,31 @@ eps0 = 8.8541878176e-12
 
 class Grid2D:
     """FDTD 2D Grid, TM Formulation"""
-    def __init__(self, dx, width, length):
-        self.dx = dx
-        self.dy = dx    # Square cells
-        self.x = np.arange(0.0, width, self.dx)
-        self.y = np.arange(0.0, length, self.dy)
+    def __init__(self, cellsize_x, width, length):
+        self.cellsize_x = cellsize_x
+        self.cellsize_y = cellsize_x    # Square cells
+        self.x = np.arange(0.0, width, self.cellsize_x)
+        self.y = np.arange(0.0, length, self.cellsize_y)
         self.ndx = len(self.x)
         self.ndy = len(self.y)
-        self.dt = min(self.dx, self.dy) / (2 * 3e8)
+        self.dt = min(self.cellsize_x, self.cellsize_y) / (2 * 3e8)
+        self.dz = np.zeros((self.ndx, self.ndy))
         self.ez = np.zeros((self.ndx, self.ndy))
         self.hx = np.zeros((self.ndx, self.ndy))
         self.hy = np.zeros((self.ndx, self.ndy))
-        self.ca = np.ones((self.ndx, self.ndy))
-        self.cb = 0.5 * np.ones((self.ndx, self.ndy))
+        self.ihx = np.zeros((self.ndx, self.ndy))
+        self.ihy = np.zeros((self.ndx, self.ndy))
+        self.ga = np.ones((self.ndx, self.ndy))
+        self.gi2 = np.ones(self.ndx)
+        self.gi3 = np.ones(self.ndx)
+        self.fi1 = np.zeros(self.ndx)
+        self.fi2 = np.ones(self.ndx)
+        self.fi3 = np.ones(self.ndx)
+        self.gj2 = np.ones(self.ndy)
+        self.gj3 = np.ones(self.ndy)
+        self.fj1 = np.zeros(self.ndy)
+        self.fj2 = np.ones(self.ndy)
+        self.fj3 = np.ones(self.ndy)
         self.sources = []
         self.probes = []
         self.data = []
@@ -33,16 +45,68 @@ class Grid2D:
     def __repr__(self):
         s = 'ndx {0:} ndy {1:}\n'.format(self.ndx, self.ndy) \
             + 'x   {0:.3e} y {1:.3e}   m\n'.format(max(self.x), max(self.y)) \
-            + 'dx  {0:.3e} dy {1:.3e}  m\n'.format(self.dx, self.dy) \
+            + 'dx  {0:.3e} dy {1:.3e}  m\n'.format(
+                self.cellsize_x, self.cellsize_y) \
             + 'dt  {0:.3e}   s'.format(self.dt)
         return s
+
+    def init_pml(self, npml):
+        for i in range(npml+1):
+            xnum = npml - i
+            xd = npml
+            xxn = xnum / xd
+            xn = 0.25 * (xxn ** 3)
+            self.gi2[i] = self.gi2[-1-i] = 1.0 / (1.0 + xn)
+            self.gi3[i] = self.gi3[-1-i] = (1.0 - xn) / (1.0 + xn)
+            self.gj2[i] = self.gj2[-1-i] = 1.0 / (1.0 + xn)
+            self.gj3[i] = self.gj3[-1-i] = (1.0 - xn) / (1.0 + xn)
+
+            xxn = (xnum - 0.5) / xd
+            xn = 0.25 * (xxn ** 3)
+            self.fi1[i] = self.fi1[-2-i] = xn
+            self.fi2[i] = self.fi2[-2-i] = 1.0 / (1.0 + xn)
+            self.fi3[i] = self.fi3[-2-i] = (1.0 - xn) / (1.0 + xn)
+
+            self.fj1[i] = self.fj1[-2-i] = xn
+            self.fj2[i] = self.fj2[-2-i] = 1.0 / (1.0 + xn)
+            self.fj3[i] = self.fj3[-2-i] = (1.0 - xn) / (1.0 + xn)
 
     def set_material(self, start, stop, er=1.0, cond=0.0):
         indices = (self.x >= start[0]) & (self.x <= stop[0]) \
                   & (self.y >= start[1]) & (self.y <= stop[1])
         eaf = self.dt * cond / (2 * eps0 * er)
-        self.ca[indices] = (1 - eaf) / (1 + eaf)
-        self.cb[indices] = 0.5 / (er * (1 + eaf))
+        self.ga[indices] = (1 - eaf) / (1 + eaf)
+
+    def update_dz(self):
+        for i in range(1, self.ndx):
+            for j in range(1, self.ndy):
+                self.dz[i, j] = self.gi3[i] * self.gj3[j] * self.dz[i, j] + (
+                                self.gi2[i] * self.gj2[j] * 0.5 * (
+                                    self.hy[i, j] -
+                                    self.hy[i-1, j] -
+                                    self.hx[i, j] +
+                                    self.hx[i, j-1]))
+
+    def update_ez(self):
+        for i in range(1, self.ndx):
+            for j in range(1, self.ndy):
+                self.ez[i, j] = self.ga[i, j] * self.dz[i, j]
+
+    def update_hx(self):
+        for i in range(self.ndx - 1):
+            for j in range(self.ndy - 1):
+                curl_e = self.ez[i, j] - self.ez[i, j+1]
+                self.ihx[i, j] = self.ihx[i, j] + self.fi1[i] * curl_e
+                self.hx[i, j] = self.fj3[j] * self.hx[i, j] + (
+                                self.fj2[j] * 0.5 * (curl_e + self.ihx[i, j]))
+
+    def update_hy(self):
+        for i in range(self.ndx - 1):
+            for j in range(self.ndy - 1):
+                curl_e = self.ez[i+1, j] - self.ez[i, j]
+                self.ihy[i, j] = self.ihy[i, j] + self.fj1[i] * curl_e
+                self.hy[i, j] = self.fi3[i] * self.hy[i, j] + (
+                                self.fi2[i] * 0.5 * (curl_e + self.ihy[i, j]))
 
     def solve(self, total_time, n_frames=125):
         self.t = np.arange(total_time, step=self.dt)
@@ -60,29 +124,15 @@ class Grid2D:
                     time_id,
                     100.0 * time_id / len(self.t)))
 
-            for i in range(1, self.ndx):
-                for j in range(1, self.ndy):
-                    self.ez[i, j] = self.ca[i, j] * self.ez[i, j] + (
-                                    self.cb[i, j] * (self.hy[i, j] -
-                                                     self.hy[i-1, j] -
-                                                     self.hx[i, j] +
-                                                     self.hx[i, j-1]))
+            self.update_dz()
+            self.update_ez()
 
             for source in self.sources:
                 self.ez[source.position[0],
                         source.position[1]] += source.solve(time)
 
-            for i in range(self.ndx - 1):
-                for j in range(self.ndy - 1):
-                    self.hx[i, j] = self.hx[i, j] + (
-                                    0.5 * (self.ez[i, j] -
-                                           self.ez[i, j+1]))
-
-            for i in range(self.ndx - 1):
-                for j in range(self.ndy - 1):
-                    self.hy[i, j] = self.hy[i, j] + (
-                                    0.5 * (self.ez[i+1, j] -
-                                           self.ez[i, j]))
+            self.update_hx()
+            self.update_hy()
 
             for probe in self.probes:
                 probe.data[time_id] = self.ez[probe.position[0],
@@ -219,15 +269,18 @@ def plot_response(input, output, time, dt, title='Response'):
 
 
 def main():
-    total_time = 2e-9
-    n_frames = 120
+    total_time = 20e-9
+    n_frames = 360
     dx = 0.01
-    grid = Grid2D(dx, 0.6, 0.6)
+    grid = Grid2D(dx, 1.6, 1.6)
+    grid.init_pml(8)
     print(grid)
-    # grid.set_material(1.0, 1.5, er=4.0, cond=0.04)
+    # p1 = np.array([[0.3], [0.4]])
+    # p2 = np.array([[0.2], [0.5]])
+    # grid.set_material(p1, p2, er=4.0, cond=0.04)
     src_pos = np.array([[25], [25]])
-    source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
-    # source = Sinusoid(src_pos, 'Sine 1 GHz', 1.0, 1e9)
+    # source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
+    source = Sinusoid(src_pos, 'Sine 1 GHz', 1.0, 1e9)
     # source = SinusoidalGauss(src_pos, 'Sine-Gauss 1 GHz', 5e8, 2e9)
     grid.add_source(source)
     grid.add_probe(Probe(np.array([[50], [50]]), 'Corner'))
