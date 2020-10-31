@@ -23,11 +23,13 @@ class Grid2D:
         self.dt = min(self.cellsize_x, self.cellsize_y) / (2 * 3e8)
         self.dz = np.zeros((self.ndx, self.ndy))
         self.ez = np.zeros((self.ndx, self.ndy))
+        self.iz = np.zeros((self.ndx, self.ndy))
         self.hx = np.zeros((self.ndx, self.ndy))
         self.hy = np.zeros((self.ndx, self.ndy))
         self.ihx = np.zeros((self.ndx, self.ndy))
         self.ihy = np.zeros((self.ndx, self.ndy))
         self.ga = np.ones((self.ndx, self.ndy))
+        self.gb = np.zeros((self.ndx, self.ndy))
         self.gi2 = np.ones(self.ndx)
         self.gi3 = np.ones(self.ndx)
         self.fi1 = np.zeros(self.ndx)
@@ -71,11 +73,12 @@ class Grid2D:
             self.fj2[i] = self.fj2[-2-i] = 1.0 / (1.0 + xn)
             self.fj3[i] = self.fj3[-2-i] = (1.0 - xn) / (1.0 + xn)
 
-    def set_material(self, start, stop, er=1.0, cond=0.0):
-        indices = (self.x >= start[0]) & (self.x <= stop[0]) \
-                  & (self.y >= start[1]) & (self.y <= stop[1])
-        eaf = self.dt * cond / (2 * eps0 * er)
-        self.ga[indices] = (1 - eaf) / (1 + eaf)
+    def set_material(self, p1, p2, er=1.0, cond=0.0):
+        # indices = (self.x >= start[0]) & (self.x <= stop[0]) \
+        #          & (self.y >= start[1]) & (self.y <= stop[1])
+        self.ga[p1[0]:p2[0], p1[1]:p2[1]] = 1.0 / (er +
+                                                   (cond * self.dt / eps0))
+        self.gb[p1[0]:p2[0], p1[1]:p2[1]] = cond * self.dt / eps0
 
     def update_dz(self):
         for i in range(1, self.ndx):
@@ -90,7 +93,8 @@ class Grid2D:
     def update_ez(self):
         for i in range(1, self.ndx):
             for j in range(1, self.ndy):
-                self.ez[i, j] = self.ga[i, j] * self.dz[i, j]
+                self.ez[i, j] = self.ga[i, j] * (self.dz[i, j] - self.iz[i, j])
+                self.iz[i, j] = self.iz[i, j] + self.gb[i, j] * self.ez[i, j]
 
     def update_hx(self):
         for i in range(self.ndx - 1):
@@ -269,18 +273,18 @@ def plot_response(input, output, time, dt, title='Response'):
 
 
 def main():
-    total_time = 20e-9
-    n_frames = 360
+    total_time = 5e-9
+    n_frames = 125
     dx = 0.01
-    grid = Grid2D(dx, 1.6, 1.6)
+    grid = Grid2D(dx, 0.6, 0.6)
     grid.init_pml(8)
     print(grid)
-    # p1 = np.array([[0.3], [0.4]])
-    # p2 = np.array([[0.2], [0.5]])
-    # grid.set_material(p1, p2, er=4.0, cond=0.04)
-    src_pos = np.array([[25], [25]])
-    # source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
-    source = Sinusoid(src_pos, 'Sine 1 GHz', 1.0, 1e9)
+    p1 = np.array([20, 30])
+    p2 = np.array([40, 50])
+    grid.set_material(p1, p2, er=4.0, cond=0.1)
+    src_pos = np.array([[5], [5]])
+    source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
+    # source = Sinusoid(src_pos, 'Sine 1 GHz', 1.0, 1e9)
     # source = SinusoidalGauss(src_pos, 'Sine-Gauss 1 GHz', 5e8, 2e9)
     grid.add_source(source)
     grid.add_probe(Probe(np.array([[50], [50]]), 'Corner'))
