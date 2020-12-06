@@ -20,6 +20,7 @@ class Grid2D:
         self.y = np.arange(0.0, length, self.cellsize_y)
         self.ndx = len(self.x)
         self.ndy = len(self.y)
+        self.scattered_boundary = 12
         self.dt = min(self.cellsize_x, self.cellsize_y) / (2 * 3e8)
         self.dz = np.zeros((self.ndx, self.ndy))
         self.ez = np.zeros((self.ndx, self.ndy))
@@ -28,6 +29,8 @@ class Grid2D:
         self.hy = np.zeros((self.ndx, self.ndy))
         self.ihx = np.zeros((self.ndx, self.ndy))
         self.ihy = np.zeros((self.ndx, self.ndy))
+        self.ez_inc = np.zeros(self.ndy)
+        self.hx_inc = np.zeros(self.ndy)
         self.ga = np.ones((self.ndx, self.ndy))
         self.gb = np.zeros((self.ndx, self.ndy))
         self.gi2 = np.ones(self.ndx)
@@ -41,6 +44,7 @@ class Grid2D:
         self.fj2 = np.ones(self.ndy)
         self.fj3 = np.ones(self.ndy)
         self.sources = []
+        self.plane_sources = []
         self.probes = []
         self.data = []
 
@@ -89,6 +93,9 @@ class Grid2D:
                                     self.hy[i-1, j] -
                                     self.hx[i, j] +
                                     self.hx[i, j-1]))
+        n = self.scattered_boundary
+        self.dz[n:-n, n] += 0.5 * self.hx_inc[n-1]
+        self.dz[n:-n, -n] -= 0.5 * self.hx_inc[-n]
 
     def update_ez(self):
         for i in range(1, self.ndx):
@@ -103,6 +110,9 @@ class Grid2D:
                 self.ihx[i, j] = self.ihx[i, j] + self.fi1[i] * curl_e
                 self.hx[i, j] = self.fj3[j] * self.hx[i, j] + (
                                 self.fj2[j] * 0.5 * (curl_e + self.ihx[i, j]))
+        n = self.scattered_boundary
+        self.hx[n:-n, n-1] += 0.5 * self.ez_inc[n]
+        self.hx[n:-n, -n] -= 0.5 * self.ez_inc[-n]
 
     def update_hy(self):
         for i in range(self.ndx - 1):
@@ -111,6 +121,17 @@ class Grid2D:
                 self.ihy[i, j] = self.ihy[i, j] + self.fj1[i] * curl_e
                 self.hy[i, j] = self.fi3[i] * self.hy[i, j] + (
                                 self.fi2[i] * 0.5 * (curl_e + self.ihy[i, j]))
+        n = self.scattered_boundary
+        self.hy[n-1, n:-n] -= 0.5 * self.ez_inc[n:-n]
+        self.hy[-n, n:-n] += 0.5 * self.ez_inc[n:-n]
+
+    def update_ez_inc(self):
+        for j in range(1, self.ndy):
+            self.ez_inc[j] += 0.5 * (self.hx_inc[j-1] - self.hx_inc[j])
+
+    def update_hx_inc(self):
+        for j in range(self.ndy - 1):
+            self.hx_inc[j] += 0.5 * (self.ez_inc[j] - self.ez_inc[j+1])
 
     def solve(self, total_time, n_frames=125):
         self.t = np.arange(total_time, step=self.dt)
@@ -118,6 +139,9 @@ class Grid2D:
                                 int(n_frames), dtype='int64')
         for probe in self.probes:
             probe.data = np.zeros(len(self.t))
+
+        abc_left = [0, 0]
+        abc_right = [0, 0]
 
         print('Solving {0} time steps'.format(len(self.t)))
         print_ids = np.linspace(0, len(self.t) - 1, 11, dtype='int64')
@@ -128,13 +152,25 @@ class Grid2D:
                     time_id,
                     100.0 * time_id / len(self.t)))
 
+            self.update_ez_inc()
+
+            self.ez_inc[0] = abc_left.pop()
+            abc_left.insert(0, self.ez_inc[1])
+            self.ez_inc[-1] = abc_right.pop()
+            abc_right.insert(0, self.ez_inc[-2])
+
             self.update_dz()
+
+            for source in self.plane_sources:
+                self.ez_inc[source.position] = source.solve(time)
+
             self.update_ez()
 
             for source in self.sources:
                 self.ez[source.position[0],
                         source.position[1]] += source.solve(time)
 
+            self.update_hx_inc()
             self.update_hx()
             self.update_hy()
 
@@ -149,6 +185,9 @@ class Grid2D:
 
     def add_source(self, source):
         self.sources.append(source)
+
+    def add_plane_source(self, source):
+        self.plane_sources.append(source)
 
     def add_probe(self, probe):
         self.probes.append(probe)
@@ -276,21 +315,23 @@ def main():
     total_time = 5e-9
     n_frames = 125
     dx = 0.01
-    grid = Grid2D(dx, 0.6, 0.6)
+    grid = Grid2D(dx, 0.6, 1.0)
     grid.init_pml(8)
     print(grid)
-    p1 = np.array([20, 30])
-    p2 = np.array([40, 50])
-    grid.set_material(p1, p2, er=4.0, cond=0.1)
-    src_pos = np.array([[5], [5]])
-    source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
+    p1 = np.array([25, 35])
+    p2 = np.array([25, 35])
+    # grid.set_material(p1, p2, er=4.0, cond=10.0)
+    # src_pos = np.array([[30], [15]])
+    # source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
     # source = Sinusoid(src_pos, 'Sine 1 GHz', 1.0, 1e9)
     # source = SinusoidalGauss(src_pos, 'Sine-Gauss 1 GHz', 5e8, 2e9)
-    grid.add_source(source)
+    source = Gaussian(30, 'PlaneGaussian', 1.0, 20 * grid.dt, 8 * grid.dt)
+    # grid.add_source(source)
+    grid.add_plane_source(source)
     grid.add_probe(Probe(np.array([[50], [50]]), 'Corner'))
     grid.solve(total_time, n_frames)
 
-    X, Y = np.meshgrid(grid.x, grid.y)
+    X, Y = np.meshgrid(grid.x, grid.y, indexing='ij')
 
     source_data = source.solve(grid.t)
     plot_time_freq(source_data, grid.t, grid.dt, 'Source')
