@@ -1,7 +1,6 @@
 #! /usr/bin/python3
 
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 mu0 = 4e-7 * np.pi
@@ -25,8 +24,8 @@ def chain_params(char_impedance, beta, length):
 
 def solve_current(chain, Vs, Zs, Zl):
     n = Zl * chain[1, 0] - chain[0, 0]
-    d = chain[0, 1] - chain[0, 0] * Zs - (
-        Zl * chain[1, 1] + Zl * chain[1, 0] * Zs)
+    d = chain[0, 1] - chain[0, 0] * Zs - \
+        Zl * chain[1, 1] + Zl * chain[1, 0] * Zs
     I0 = n/d * Vs
     Il = chain[1, 0] * Vs + (chain[1, 1] - chain[1, 0] * Zs) * I0
     return np.array([I0, Il])
@@ -62,6 +61,41 @@ def freqspace(line, f_min, f_max, max_step):
         w = 2 * np.pi * f
         f = line.velocity(w) / (line.wavelength(w) * (1 - max_step))
     return np.array(steps)
+
+
+class TerminatedTLine:
+    def __init__(self, tline, zs, zl, vs):
+        def make_callable(v):
+            if callable(v):
+                return v
+            else:
+                return lambda w: v
+
+        self.tline = tline
+        self.zs = make_callable(zs)
+        self.zl = make_callable(zl)
+        self.vs = make_callable(vs)
+
+    def reflection(self, w, z):
+        zc = self.tline.impedance(w)
+        refl = (self.zl(w) - zc) / (self.zl(w) + zc)
+        return refl * np.exp(2 * self.tline.prop_const(w) *
+                             (z - self.tline.length))
+
+    def input_impedance(self, w, z=0):
+        refl = self.reflection(w, z)
+        return self.tline.impedance(w) * (1 + refl) / (1 - refl)
+
+    def solve(self, w, z):
+        zc = self.tline.impedance(w)
+        y = self.tline.prop_const(w)
+        refl = (self.zl(w) - zc) / (self.zl(w) + zc)
+        refs = (self.zs(w) - zc) / (self.zs(w) + zc)
+        a = np.exp(-2 * y * self.tline.length)
+        b = np.exp(2 * y * z)
+        v = (1 + refl * a * b) / (1 - refs * refl * a) * zc
+        i = (1 - refl * a * b) / (1 - refs * refl * a)
+        return self.vs(w) / (zc + self.zs(w)) * np.exp(-y * z) * np.array([v, i])
 
 
 class TLine:
@@ -118,11 +152,11 @@ if __name__ == '__main__':
     print('td', td)
     Vs = 1
     Zc = 50
-    Zs = 100
-    Zl = 500
+    Zs = 50
+    Zl = 100
     cp1 = chain_params(Zc, beta, length)
     cp2 = chain_params(0.5 * Zc, beta, length)
-    cp = cp2 @ cp1
+    cp = cp1 #cp2 @ cp1
     i = solve_current(cp, Vs, Zs, Zl)
     v = solve_voltage(Vs, i[0], i[1], Zs, Zl)
     print('cp1', cp1)
@@ -132,18 +166,33 @@ if __name__ == '__main__':
     print('Current', abs(i[0]), abs(i[1]))
     print('Voltage', abs(v[0]), abs(v[1]))
 
-    line = TLine(4.61e-7, 1.13e-10, 1, 25.46, 1.423e-2)
-    print(line.l, line.c, line.velocity(w), line.delay(w))
-    print(line.attn_const(2*np.pi*1e9))
-    print(line.chain_param(2*np.pi*1e9))
-    print(line.impedance(w))
+    # line = TLine(4.61e-7, 1.13e-10, 1, 25.46, 1.423e-2)
+    # print(line.l, line.c, line.velocity(w), line.delay(w))
+    # print(line.attn_const(2*np.pi*1e9))
+    # print(line.chain_param(2*np.pi*1e9))
+    # print(line.impedance(w))
 
+    print('--- Lossless ---')
     line = create_lossless(Zc, er, length)
     print(line.l, line.c, line.velocity(w), line.delay(w))
-    print(line.attn_const(w))
-    print(line.phase_const(w))
-    print(line.chain_param(w))
-    print(line.impedance(w))
+    print('attn', line.attn_const(w))
+    print('phase', line.phase_const(w))
+    print('chain', line.chain_param(w))
+    print('impedance', line.impedance(w))
+
+    print('--- Terminated Tline ---')
+    network = TerminatedTLine(line, Zs, Zl, Vs)
+    src = network.solve(w, 0)
+    load = network.solve(w, length)
+    print('Zin(0)', abs(network.input_impedance(w)))
+    print('Current', abs(src[1]), abs(load[1]))
+    print('Voltage', abs(src[0]), abs(load[0]))
+    z = np.linspace(0, length, 100)
+    fig, ax = plt.subplots()
+    ax.plot(z, np.abs(network.solve(w, z)[0, :]), label='V(z)')
+    ax.set(xlabel='Position (m)', ylabel='Voltage (V)')
+    ax.legend()
+    ax.grid()
 
     n_s = 6
     n_p = 9
