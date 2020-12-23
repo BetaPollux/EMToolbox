@@ -126,10 +126,14 @@ class TLine:
         return np.sqrt((self.r + 1.0j*w*self.l) *
                        (self.g + 1.0j*w*self.c))
 
-    def phase_const(self, w):
+    def phase_const(self, w, units=None):
+        if units == 'deg' or units == 'deg/m':
+            return np.rad2deg(np.imag(self.prop_const(w)))
         return np.imag(self.prop_const(w))
 
-    def attn_const(self, w):
+    def attn_const(self, w, units=None):
+        if units == 'db' or units == 'db/m':
+            return np.real(self.prop_const(w)) * 8.685889638
         return np.real(self.prop_const(w))
 
     def chain_param(self, w):
@@ -156,7 +160,7 @@ if __name__ == '__main__':
     Zl = 100
     cp1 = chain_params(Zc, beta, length)
     cp2 = chain_params(0.5 * Zc, beta, length)
-    cp = cp1 #cp2 @ cp1
+    cp = cp2 @ cp1
     i = solve_current(cp, Vs, Zs, Zl)
     v = solve_voltage(Vs, i[0], i[1], Zs, Zl)
     print('cp1', cp1)

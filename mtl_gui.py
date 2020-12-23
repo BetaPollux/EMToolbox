@@ -2,6 +2,7 @@
 
 import sys
 import wx
+import mtl_wrapper
 
 
 class MtlFrame(wx.Frame):
@@ -49,17 +50,20 @@ class MtlFrame(wx.Frame):
         return (('source_z', 'ZS (ohms)', 50),
                 ('load_z', 'ZL (ohms)', 50),
                 ('length', 'Length (m)', 1),
-                ('tline_r', 'R (ohms)', 0),
-                ('tline_l', 'L (henries)', 50e-6),
-                ('tline_g', 'G (siemens)', 0),
-                ('tline_c', 'C (farads)', 100e-6))
+                ('tline_r', 'R (ohms)', 2),
+                ('tline_l', 'L (henries)', 500e-9),
+                ('tline_g', 'G (siemens)', 1e-8),
+                ('tline_c', 'C (farads)', 100e-12),
+                ('freq_start', 'f0 (Hz)', 10e3),
+                ('freq_stop', 'f1 (Hz)', 1e9))
 
     def output_fields(self):
-        return (('tline_td', 'TD (s)', ''),
+        return (('frequency', 'At Frequency (Hz)', ''),
+                ('tline_td', 'TD (s)', ''),
                 ('tline_zc', 'ZC (ohms)', ''),
                 ('tline_vp', 'vp (m/s)', ''),
                 ('tline_attn', 'attn (dB/m)', ''),
-                ('tline_phase', 'phase (rad/m)', ''))
+                ('tline_phase', 'phase (deg/m)', ''))
 
     def create_text_field_set(self, fields, text_style=0):
         text_field_sizer = wx.FlexGridSizer(cols=2, vgap=5, hgap=5)
@@ -82,9 +86,7 @@ class MtlFrame(wx.Frame):
         return (static, text)
 
     def OnSolve(self, event):
-        print('Solve!')
-        print(self.parse_input_fields())
-        outputs = {'tline_td': 1e-9, 'tline_zc': 100, 'junk': 7}
+        outputs = mtl_wrapper.solve(self.parse_input_fields())
         self.populate_output_fields(outputs)
 
 
