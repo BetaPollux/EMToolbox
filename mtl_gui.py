@@ -47,21 +47,21 @@ class MtlFrame(wx.Frame):
                       file=sys.stderr)
 
     def input_fields(self):
-        return (('source_z', 'ZS (ohms)', 50),
-                ('load_z', 'ZL (ohms)', 50),
+        return (('source_z', f'ZS ({chr(0x3a9)})', 50),
+                ('load_z', f'ZL ({chr(0x3a9)})', 50),
                 ('length', 'Length (m)', 1),
-                ('tline_r', 'R (ohms)', 2),
-                ('tline_l', 'L (henries)', 500e-9),
-                ('tline_g', 'G (siemens)', 1e-8),
-                ('tline_c', 'C (farads)', 100e-12),
+                ('tline_r', f'R ({chr(0x3a9)}/m)', 2),
+                ('tline_l', 'L (H/m)', 500e-9),
+                ('tline_g', 'G (S/m)', 1e-8),
+                ('tline_c', 'C (F/m)', 100e-12),
                 ('freq_start', 'f0 (Hz)', 10e3),
                 ('freq_stop', 'f1 (Hz)', 1e9))
 
     def output_fields(self):
         return (('frequency', 'At Frequency (Hz)', ''),
-                ('tline_td', 'TD (s)', ''),
-                ('tline_zc', 'ZC (ohms)', ''),
-                ('tline_vp', 'vp (m/s)', ''),
+                ('tline_td', 'Td (s)', ''),
+                ('tline_zc', f'Zc ({chr(0x3a9)})', ''),
+                ('tline_vp', 'Vp (m/s)', ''),
                 ('tline_attn', 'attn (dB/m)', ''),
                 ('tline_phase', 'phase (deg/m)', ''))
 
@@ -86,7 +86,8 @@ class MtlFrame(wx.Frame):
         return (static, text)
 
     def OnSolve(self, event):
-        outputs = mtl_wrapper.solve(self.parse_input_fields())
+        outputs = mtl_wrapper.solve(self.parse_input_fields(),
+                                    parent_window=self)
         self.populate_output_fields(outputs)
 
 

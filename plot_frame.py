@@ -24,18 +24,33 @@ class PlotTab(wx.Panel):
         sizer.Add(self.toolbar, 0, wx.LEFT | wx.EXPAND)
         self.SetSizer(sizer)
 
-    def set_axis(self, xlabel: str, ylabel: str, ax: int = 0):
-        self.axes[ax].set_xlabel(xlabel)
-        self.axes[ax].set_ylabel(ylabel)
+    def set_axis(self, xlabel: str, ylabel: str,
+                 xscale: str = None, yscale: str = None,
+                 ax: int = 0):
+        if xlabel:
+            self.axes[ax].set_xlabel(xlabel)
+        if xscale:
+            assert xscale in ('linear', 'log')
+            self.axes[ax].set_xscale(xscale)
+        if ylabel:
+            self.axes[ax].set_ylabel(ylabel)
+        if yscale:
+            assert yscale in ('linear', 'log')
+            self.axes[ax].set_yscale(yscale)
+
+    def set_legend(self, ax: int = 0):
+        self.axes[ax].legend()
+
+    def set_grid(self, ax: int = 0):
         self.axes[ax].grid()
 
-    def plot(self, x, y, ax: int = 0):
-        self.axes[ax].plot(x, y)
+    def plot(self, x, y, label: str = None, ax: int = 0):
+        self.axes[ax].plot(x, y, label=label)
 
 
 class PlotFrame(wx.Frame):
-    def __init__(self, title: str = 'PlotFrame'):
-        wx.Frame.__init__(self, None, title=title, size=(640, 480))
+    def __init__(self, parent=None, title: str = 'PlotFrame'):
+        wx.Frame.__init__(self, parent, title=title, size=(640, 480))
 
         self.panel = wx.Panel(self)
         self.notebook = wx.Notebook(self.panel)

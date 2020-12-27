@@ -3,12 +3,12 @@
 '''Wrapper interface for tline classes for use by GUI'''
 
 from tline import TLine, TerminatedTLine
+from plot_frame import PlotFrame
 import cmath
 import numpy as np
-import matplotlib.pyplot as plt
 
 
-def solve(inputs: dict) -> dict:
+def solve(inputs: dict, parent_window=None) -> dict:
     zs = float(inputs.get('source_z', 50))
     zl = float(inputs.get('load_z', 50))
     length = float(inputs.get('length', 1))
@@ -25,20 +25,31 @@ def solve(inputs: dict) -> dict:
     n = 400
     f = np.geomspace(freq_start, freq_stop, n)
     w = 2 * np.pi * f
-    src = network.solve(w, 0)
-    load = network.solve(w, length)
+    src = np.abs(network.solve(w, 0))
+    load = np.abs(network.solve(w, length))
+    zc = np.abs(tline.impedance(w))
+    attn = tline.attn_const(w)
+    velocity = tline.velocity(w)
 
-    fig, ax = plt.subplots()
-    ax.semilogx(f, np.abs(src[0]), label='Source')
-    ax.semilogx(f, np.abs(load[0]), label='Load')
-    ax.set(xlabel='Frequency (Hz)', ylabel='Voltage (V)')
-    if max(ax.get_ylim()) < 1:
-        ax.set_ylim([0, 1])
-    ax.legend()
-    ax.grid()
-
-    # plt.ion()
-    plt.show()
+    pages = (('Voltage', 'Voltage (V)',
+              (src[0], 'Source'), (load[0], 'Load')),
+             ('Current', 'Current (A)',
+              (src[1], 'Source'), (load[1], 'Load')),
+             ('Impedance', f'Magnitude of Zc ({chr(0x3a9)})',
+              (zc, '|Zc|')),
+             ('Attenuation', 'Attenuation (Np/m)',
+              (attn, r'$\alpha$')),
+             ('Velocity', 'Velocity (m/s)',
+              (velocity, 'Vp')))
+    frame = PlotFrame(parent=parent_window)
+    for title, units, *curves in pages:
+        page = frame.add_page(title)
+        page.set_axis('Frequency (Hz)', units, xscale='log')
+        for y_data, label in curves:
+            page.plot(f, y_data, label=label)
+        page.set_legend()
+        page.set_grid()
+    frame.Show()
 
     calc_f = 10e6
     calc_w = 2 * np.pi * calc_f

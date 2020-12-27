@@ -130,6 +130,7 @@ dmypy.json
 
 # vs code
 .vscode
+*.code-workspace
 
 # images
 *.gif
