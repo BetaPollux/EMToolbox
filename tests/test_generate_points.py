@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-from generate_points import *
 import numpy as np
 import unittest
+import emtoolbox.fields.generate_points as gp
 
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestSequenceFunctions(unittest.TestCase):
         r0 = np.array([-1.0, -2.0, -3.0])
         r1 = np.array([1.0, 2.0, 3.0])
         s = 5
-        points = generate_line(r0, r1, s)
+        points = gp.generate_line(r0, r1, s)
 
         expected = np.array([[-1.0, -2.0, -3.0],
                              [-0.5, -1.0, -1.5],
@@ -32,7 +32,7 @@ class TestSequenceFunctions(unittest.TestCase):
         r0 = np.zeros(3)
         n = np.array([0.0, 0.0, 1.0])
         s = 4
-        points = generate_ring(a, r0, n, s)
+        points = gp.generate_ring(a, r0, n, s)
 
         expected = np.array([[a, 0.0, 0.0],
                              [0.0, a, 0.0],
@@ -46,7 +46,7 @@ class TestSequenceFunctions(unittest.TestCase):
         r0 = np.array([0.0, 1.0, 1.0])
         n = np.array([0.0, 0.0, 1.0])
         s = 4
-        points = generate_ring(a, r0, n, s)
+        points = gp.generate_ring(a, r0, n, s)
 
         expected = np.array([[a, 1.0, 1.0],
                              [0.0, 1.0 + a, 1.0],
@@ -60,7 +60,7 @@ class TestSequenceFunctions(unittest.TestCase):
         r0 = np.zeros(3)
         n = np.array([1.0, 0.0, 0.0])
         s = 4
-        points = generate_ring(a, r0, n, s)
+        points = gp.generate_ring(a, r0, n, s)
 
         expected = np.array([[0.0, 0.0, a],
                              [0.0, a, 0],
@@ -74,7 +74,7 @@ class TestSequenceFunctions(unittest.TestCase):
         r0 = np.zeros(3)
         n = np.array([0.0, 1.0, 0.0])
         s = 4
-        points = generate_ring(a, r0, n, s)
+        points = gp.generate_ring(a, r0, n, s)
 
         expected = np.array([[a, 0.0, 0.0],
                              [0.0, 0.0, a],

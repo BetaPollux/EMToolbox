@@ -2,7 +2,7 @@
 
 import sys
 import wx
-import mtl_wrapper
+import emtoolbox.gui.mtl_wrapper as mtl_wrapper
 
 
 class MtlFrame(wx.Frame):
@@ -102,6 +102,10 @@ class MtlApp(wx.App):
         return True
 
 
-if __name__ == '__main__':
+def main():
     app = MtlApp(redirect=False)
     app.MainLoop()
+
+
+if __name__ == '__main__':
+    main()

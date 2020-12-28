@@ -1,0 +1,7 @@
+'''
+EMToolBox
+
+
+An electromagnetics toolbox.
+
+'''

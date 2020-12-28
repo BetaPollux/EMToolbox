@@ -3,9 +3,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-mu0 = 4e-7 * np.pi
-eps0 = 8.854e-12
-
 
 def velocity(er):
     return 3e8 / np.sqrt(er)

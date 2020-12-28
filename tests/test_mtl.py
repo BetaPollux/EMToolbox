@@ -1,8 +1,8 @@
 #! /usr/bin/python3
 
-from mtl import *
 import numpy as np
 import unittest
+from emtoolbox.tline.mtl import Mtl, meters_from_mils, WideSep_Wire, WideSep_Plane, WideSep_Shield
 
 
 class TestWideSep_Wire_Three(unittest.TestCase):

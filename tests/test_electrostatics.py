@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-from electrostatics import *
 import numpy as np
 import unittest
+import emtoolbox.fields.electrostatics as emf
 
 
 class TestSequenceFunctions(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestSequenceFunctions(unittest.TestCase):
         q = 64.4e-9
         rf = np.array([0.0, 0.0, 0.0])
         rq = np.array([-4.0, 3.0, 2.0])
-        E = efield_point(q, rq, rf)
+        E = emf.efield_point(q, rq, rf)
 
         expected = 20.0 / np.sqrt(29) * np.array([4.0, -3.0, -2.0])
 
@@ -28,7 +28,7 @@ class TestSequenceFunctions(unittest.TestCase):
         q = 5e-9
         rf = np.array([0.5])
         rq = np.array([0.1])
-        E = efield_point(q, rq, rf)
+        E = emf.efield_point(q, rq, rf)
 
         expected = np.array([280.9])
 
@@ -39,7 +39,7 @@ class TestSequenceFunctions(unittest.TestCase):
         rf = np.array([0.0, 0.0, 0.0])
         rq = np.array([[0.5, 0.5, 0.5],
                        [-0.5, -0.5, -0.5]])
-        E = efield_point_coll(q, rq, rf)
+        E = emf.efield_point_coll(q, rq, rf)
 
         expected = np.zeros_like(rf)
 
@@ -49,7 +49,7 @@ class TestSequenceFunctions(unittest.TestCase):
         rf = np.array([0.5])
         rq = np.array([0.1, 0.3])
         q = np.array([1e-9, 1e-9])
-        E = efield_point_coll(q, rq, rf)
+        E = emf.efield_point_coll(q, rq, rf)
 
         expected = np.array([280.9])
 
@@ -61,7 +61,7 @@ class TestSequenceFunctions(unittest.TestCase):
         rq = np.array([[0.0, 4.0, 0.0],
                        [3.0, 0.0, 0.0]])
         q = np.array([0.35e-6, -0.55e-6])
-        E = efield_point_coll(q, rq, rf)
+        E = emf.efield_point_coll(q, rq, rf)
 
         expected = np.array([74.9, -48.0, -64.9])
 
@@ -73,7 +73,7 @@ class TestSequenceFunctions(unittest.TestCase):
         rq = np.array([2.0, -4.0, 0.0])
         nq = np.array([0.0, 0.0, 1.0])
         rf = np.array([-2.0, -1.0, 4.0])
-        E = efield_line(ql, rq, nq, rf)
+        E = emf.efield_line(ql, rq, nq, rf)
 
         expected = np.array([-57.6, 43.2, 0.0])
 
@@ -86,10 +86,10 @@ class TestSequenceFunctions(unittest.TestCase):
         nq1 = np.array([1.0, 0.0, 0.0])
         nq2 = np.array([0.0, 1.0, 0.0])
         rf = np.array([3.0, 3.0, 3.0])
-        E1 = efield_line(ql, rq, nq1, rf)
-        E2 = efield_line(ql, rq, nq2, rf)
+        E1 = emf.efield_line(ql, rq, nq1, rf)
+        E2 = emf.efield_line(ql, rq, nq2, rf)
         E = E1 + E2
-        expected = (0.5305e-6 / eps0) * np.array([1.0, 1.0, 2.0])
+        expected = (0.5305e-6 / emf.eps0) * np.array([1.0, 1.0, 2.0])
 
         np.testing.assert_allclose(E, expected, rtol=0.01)
 
@@ -101,9 +101,9 @@ class TestSequenceFunctions(unittest.TestCase):
         rf1 = np.zeros(3)                # Below plane
         rf2 = np.array([3.0, 0.0, 4.0])  # Above plane
         rf3 = np.array([0.0, 0.0, 6.0])  # On plane
-        E1 = efield_plane(qs, rq, nq, rf1)
-        E2 = efield_plane(qs, rq, nq, rf2)
-        E3 = efield_plane(qs, rq, nq, rf3)
+        E1 = emf.efield_plane(qs, rq, nq, rf1)
+        E2 = emf.efield_plane(qs, rq, nq, rf2)
+        E3 = emf.efield_plane(qs, rq, nq, rf3)
 
         expected = 17.0 / np.sqrt(14) * np.array([-2.0, 3.0, -1.0])
 
@@ -118,9 +118,9 @@ class TestSequenceFunctions(unittest.TestCase):
         nq = np.array([0.0, 0.0, 1.0])
         a = 2
         rf = np.array([0.0, 0.0, 5.0])
-        E = efield_ring(ql, rq, nq, a, rf)
+        E = emf.efield_ring(ql, rq, nq, a, rf)
 
-        expected = efield_point(100.5e-9, rq, rf)
+        expected = emf.efield_point(100.5e-9, rq, rf)
 
         np.testing.assert_allclose(E, expected, rtol=0.01)
 
@@ -131,7 +131,7 @@ class TestSequenceFunctions(unittest.TestCase):
         rq = np.zeros(3)
         nq = np.array([0.0, 0.0, 1.0])
         rf = np.array([0.0, 0.0, 5.0])
-        E = efield_disk(qs, rq, nq, a, rf)
+        E = emf.efield_disk(qs, rq, nq, a, rf)
 
         expected = np.array([0.0, 0.0, (16.56 / 50e-6)])
 

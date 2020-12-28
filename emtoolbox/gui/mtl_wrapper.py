@@ -2,10 +2,10 @@
 
 '''Wrapper interface for tline classes for use by GUI'''
 
-from tline import TLine, TerminatedTLine
-from plot_frame import PlotFrame
 import cmath
 import numpy as np
+from emtoolbox.tline.tline import TLine, TerminatedTLine
+from emtoolbox.gui.plot_frame import PlotFrame
 
 
 def solve(inputs: dict, parent_window=None) -> dict:
