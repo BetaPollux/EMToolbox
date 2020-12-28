@@ -1,13 +1,8 @@
 #! /usr/bin/python3
 
 import numpy as np
-
-MU0 = 4e-7 * np.pi
-EPS0 = 8.854e-12
-
-
-def meters_from_mils(pos):
-    return 2.54e-5 * pos
+from emtoolbox.utils.conversions import meters_from_mils
+from emtoolbox.utils.constants import MU0, EPS0
 
 
 class WideSep_Wire():
