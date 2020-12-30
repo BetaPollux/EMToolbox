@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-import sys
 import wx
 import emtoolbox.gui.mtl_wrapper as mtl_wrapper
-
+from emtoolbox.gui.helpers import create_text_field_set, populate_output_fields, parse_input_fields
+from emtoolbox.gui.mtl_editor import MtlEditor
 
 class MtlFrame(wx.Frame):
     '''Top level frame for the multi-conductor transmission line solvers'''
@@ -14,12 +14,14 @@ class MtlFrame(wx.Frame):
         super().__init__(parent, id, title, pos, size)
         self.panel = wx.Panel(self)
 
-        input_fields = self.create_text_field_set(self.input_fields())
-        output_fields = self.create_text_field_set(self.output_fields(),
-                                                   wx.TE_READONLY)
+        input_fields = create_text_field_set(self.panel, self.input_fields())
+        output_fields = create_text_field_set(self.panel, self.output_fields(),
+                                              text_style=wx.TE_READONLY)
 
         solve_btn = wx.Button(self.panel, wx.ID_ANY, 'Solve')
+        edit_btn = wx.Button(self.panel, wx.ID_ANY, 'Edit')
         self.Bind(wx.EVT_BUTTON, self.OnSolve, solve_btn)
+        self.Bind(wx.EVT_BUTTON, self.OnEdit, edit_btn)
 
         fields_sizer = wx.BoxSizer(wx.HORIZONTAL)
         fields_sizer.Add(input_fields, 1, wx.ALL, 5)
@@ -27,24 +29,9 @@ class MtlFrame(wx.Frame):
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer.Add(fields_sizer, 0, wx.EXPAND)
+        main_sizer.Add(edit_btn, 0, wx.ALIGN_CENTER)
         main_sizer.Add(solve_btn, 0, wx.ALIGN_CENTER)
         self.panel.SetSizer(main_sizer)
-
-    def parse_input_fields(self):
-        result = {}
-        for name, *_ in self.input_fields():
-            field = self.FindWindowByName(name)
-            result[name] = field.GetValue()
-        return result
-
-    def populate_output_fields(self, fields):
-        for name, value in fields.items():
-            field = self.FindWindowByName(name)
-            if field:
-                field.SetValue(str(value))
-            else:
-                print(f'Could not populate output field: {name}, {value}',
-                      file=sys.stderr)
 
     def input_fields(self):
         return (('source_z', f'ZS ({chr(0x3a9)})', 50),
@@ -65,30 +52,15 @@ class MtlFrame(wx.Frame):
                 ('tline_attn', 'attn (dB/m)', ''),
                 ('tline_phase', 'phase (deg/m)', ''))
 
-    def create_text_field_set(self, fields, text_style=0):
-        text_field_sizer = wx.FlexGridSizer(cols=2, vgap=5, hgap=5)
-        text_field_sizer.AddGrowableCol(1, 1)
-        for name, label, default in fields:
-            static, text = self.create_text_field(self.panel,
-                                                  name, label, default,
-                                                  text_style)
-            text_field_sizer.Add(static, 0, wx.ALIGN_CENTER_VERTICAL)
-            text_field_sizer.Add(text, 0, wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
-        return text_field_sizer
-
-    def create_text_field(self, parent, name, label,
-                          default='', text_style=0):
-        '''Returns a (StaticText, TextCtrl)'''
-        static = wx.StaticText(parent, wx.ID_ANY, label=label)
-        text = wx.TextCtrl(parent, wx.ID_ANY,
-                           value=str(default), name=name,
-                           style=text_style)
-        return (static, text)
-
     def OnSolve(self, event):
-        outputs = mtl_wrapper.solve(self.parse_input_fields(),
-                                    parent_window=self)
-        self.populate_output_fields(outputs)
+        inputs = parse_input_fields(self, self.input_fields())
+        outputs = mtl_wrapper.solve(inputs, parent_window=self)
+        populate_output_fields(self, outputs)
+
+    def OnEdit(self, event):
+        editor = MtlEditor()
+        resp = editor.ShowModal()
+        print(resp)
 
 
 class MtlApp(wx.App):
