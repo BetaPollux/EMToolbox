@@ -2,7 +2,8 @@
 
 import wx
 import emtoolbox.gui.mtl_wrapper as mtl_wrapper
-from emtoolbox.gui.helpers import create_text_field_set, populate_output_fields, parse_input_fields
+from emtoolbox.gui.helpers import create_text_field_set, \
+    populate_output_fields, parse_input_fields, layout_buttons
 from emtoolbox.gui.mtl_editor import MtlEditor
 
 class MtlFrame(wx.Frame):
@@ -23,15 +24,40 @@ class MtlFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnSolve, solve_btn)
         self.Bind(wx.EVT_BUTTON, self.OnEdit, edit_btn)
 
-        fields_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        fields_sizer.Add(input_fields, 1, wx.ALL, 5)
-        fields_sizer.Add(output_fields, 1, wx.ALL, 5)
-
         main_sizer = wx.BoxSizer(wx.VERTICAL)
-        main_sizer.Add(fields_sizer, 0, wx.EXPAND)
-        main_sizer.Add(edit_btn, 0, wx.ALIGN_CENTER)
-        main_sizer.Add(solve_btn, 0, wx.ALIGN_CENTER)
+        field_sizer = self.layout_fields(input_fields, output_fields)
+        btn_sizer = layout_buttons([edit_btn, solve_btn])
+        main_sizer.Add(field_sizer, 0, wx.EXPAND)
+        main_sizer.Add(btn_sizer, 0, wx.ALIGN_RIGHT)
         self.panel.SetSizer(main_sizer)
+        main_sizer.Fit(self)
+        main_sizer.SetSizeHints(self)
+
+    def layout_fields(self, input_fields: list, output_fields: list) -> wx.Sizer:
+        '''Create a sizer containing input and output fields
+        Arguments:
+            input_fields: [(label, field), ...]
+            output_fields: [(label, field), ...]
+        Return:
+            Sizer containing the fields'''
+        # Equalize number of fields per column
+        pad = (10, 10)
+        num_rows = max(len(input_fields), len(output_fields))
+        input_fields.extend([pad] * (num_rows - len(input_fields)))
+        output_fields.extend([pad] * (num_rows - len(output_fields)))
+
+        field_sizer = wx.FlexGridSizer(cols=4, vgap=5, hgap=5)
+        field_sizer.AddGrowableCol(1, proportion=1)
+        field_sizer.AddGrowableCol(3, proportion=1)
+
+        for input_pair, output_pair in zip(input_fields, output_fields):
+            in_lbl, in_field = input_pair
+            out_lbl, out_field = output_pair
+            field_sizer.Add(in_lbl, 0, wx.LEFT, 5)
+            field_sizer.Add(in_field, 0, wx.EXPAND)
+            field_sizer.Add(out_lbl, 0, wx.LEFT, 5)
+            field_sizer.Add(out_field, 0, wx.EXPAND | wx.RIGHT, 5)
+        return field_sizer
 
     def input_fields(self):
         return (('source_z', f'ZS ({chr(0x3a9)})', 50),
@@ -61,6 +87,7 @@ class MtlFrame(wx.Frame):
         editor = MtlEditor()
         resp = editor.ShowModal()
         print(resp)
+        editor.Destroy()
 
 
 class MtlApp(wx.App):

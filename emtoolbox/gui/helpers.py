@@ -41,7 +41,7 @@ def populate_output_fields(parent: wx.Window, fields: dict) -> None:
 
 
 def create_text_field_set(parent: wx.Window, fields: list,
-                          text_style: int = 0) -> wx.Sizer:
+                          text_style: int = 0) -> list:
     '''Create labeled text fields and insert into a sizer.
     Arguments:
         parent:     The parent window
@@ -51,16 +51,9 @@ def create_text_field_set(parent: wx.Window, fields: list,
                 default:    default text for TextCtrl
         text_style: style for TextCtrl
     Return:
-        result: wx.Sizer containing the new windows'''
-    text_field_sizer = wx.FlexGridSizer(cols=2, vgap=5, hgap=5)
-    text_field_sizer.AddGrowableCol(1, 1)
-    for name, label, default in fields:
-        static, text = create_text_field(parent,
-                                         name, label, default,
-                                         text_style)
-        text_field_sizer.Add(static, 0, wx.ALIGN_CENTER_VERTICAL)
-        text_field_sizer.Add(text, 0, wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
-    return text_field_sizer
+        result: list of new (StaticText, TextCtrl)'''
+    return [create_text_field(parent, name, label, default, text_style)
+            for name, label, default in fields]
 
 
 def create_text_field(parent: wx.Window, name: str, label: str,
@@ -79,7 +72,7 @@ def create_text_field(parent: wx.Window, name: str, label: str,
 
 
 def create_choice_field_set(parent: wx.Window, fields: list,
-                            combo_style: int = 0) -> wx.Sizer:
+                            combo_style: int = 0) -> list:
     '''Create labeled choice fields and insert into a sizer.
     Arguments:
         parent:     The parent window
@@ -89,16 +82,9 @@ def create_choice_field_set(parent: wx.Window, fields: list,
                 choices:    choices for ComboBox (list)
         combo_style: style for ComboBox
     Return:
-        result: wx.Sizer containing the new windows'''
-    choices_field_sizer = wx.FlexGridSizer(cols=2, vgap=5, hgap=5)
-    choices_field_sizer.AddGrowableCol(1, 1)
-    for name, label, choices in fields:
-        static, combo = create_choice_field(parent,
-                                            name, label, choices,
-                                            combo_style)
-        choices_field_sizer.Add(static, 0, wx.ALIGN_CENTER_VERTICAL)
-        choices_field_sizer.Add(combo, 0, wx.ALIGN_CENTER_VERTICAL | wx.EXPAND)
-    return choices_field_sizer
+        result: list of (StaticText, ComboBox)'''
+    return [create_choice_field(parent, name, label, choices, combo_style)
+            for name, label, choices in fields]
 
 
 def create_choice_field(parent: wx.Window, name: str, label: str,
@@ -114,3 +100,28 @@ def create_choice_field(parent: wx.Window, name: str, label: str,
                         style=combo_style, name=name)
     combo.SetSelection(0)
     return (static, combo)
+
+
+def layout_buttons(buttons: list) -> wx.Sizer:
+    '''Create a sizer containing all buttons
+    Arguments:
+        buttons: [btn0, btn1, ...]
+    Return:
+        Sizer containing the buttons'''
+    btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    for btn in buttons:
+        btn_sizer.Add(btn, 0, wx.ALL, 5)
+    return btn_sizer
+
+def layout_fields(fields: list):
+    '''Create a sizer containing all fields
+    Arguments:
+        fields: [(label, field), ...]
+    Return:
+        Sizer containing the labeled fields'''
+    field_sizer = wx.FlexGridSizer(cols=2)
+    field_sizer.AddGrowableCol(1)
+    for label, field in fields:
+        field_sizer.Add(label, 0, wx.LEFT | wx.BOTTOM, 5)
+        field_sizer.Add(field, 0, wx.EXPAND | wx.LEFT | wx.BOTTOM | wx.RIGHT, 5)
+    return field_sizer

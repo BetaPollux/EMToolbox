@@ -5,8 +5,8 @@
 import wx
 
 class MtlCanvas(wx.Window):
-    def __init__(self, parent, ID):
-        wx.Window.__init__(self, parent, ID)
+    def __init__(self, parent, size=(80, 80)):
+        wx.Window.__init__(self, parent, size=size)
         self.buffer = None
         self.reInitBuffer = True
         self.scale = 1.0
