@@ -2,8 +2,7 @@
 
 import wx
 import emtoolbox.gui.mtl_wrapper as mtl_wrapper
-from emtoolbox.gui.helpers import create_text_field_set, \
-    populate_output_fields, parse_input_fields, layout_buttons
+import emtoolbox.gui.helpers as hlp
 from emtoolbox.gui.mtl_editor import MtlEditor
 
 class MtlFrame(wx.Frame):
@@ -15,9 +14,9 @@ class MtlFrame(wx.Frame):
         super().__init__(parent, id, title, pos, size)
         self.panel = wx.Panel(self)
 
-        input_fields = create_text_field_set(self.panel, self.input_fields())
-        output_fields = create_text_field_set(self.panel, self.output_fields(),
-                                              text_style=wx.TE_READONLY)
+        input_fields = hlp.create_text_field_set(self.panel, self.input_fields())
+        output_fields = hlp.create_text_field_set(self.panel, self.output_fields(),
+                                                  text_style=wx.TE_READONLY)
 
         solve_btn = wx.Button(self.panel, wx.ID_ANY, 'Solve')
         edit_btn = wx.Button(self.panel, wx.ID_ANY, 'Edit')
@@ -26,7 +25,7 @@ class MtlFrame(wx.Frame):
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         field_sizer = self.layout_fields(input_fields, output_fields)
-        btn_sizer = layout_buttons([edit_btn, solve_btn])
+        btn_sizer = hlp.layout_buttons([edit_btn, solve_btn])
         main_sizer.Add(field_sizer, 0, wx.EXPAND)
         main_sizer.Add(btn_sizer, 0, wx.ALIGN_RIGHT)
         self.panel.SetSizer(main_sizer)
@@ -60,33 +59,34 @@ class MtlFrame(wx.Frame):
         return field_sizer
 
     def input_fields(self):
-        return (('source_z', f'ZS ({chr(0x3a9)})', 50),
-                ('load_z', f'ZL ({chr(0x3a9)})', 50),
-                ('length', 'Length (m)', 1),
-                ('tline_r', f'R ({chr(0x3a9)}/m)', 2),
-                ('tline_l', 'L (H/m)', 500e-9),
-                ('tline_g', 'G (S/m)', 1e-8),
-                ('tline_c', 'C (F/m)', 100e-12),
-                ('freq_start', 'f0 (Hz)', 10e3),
-                ('freq_stop', 'f1 (Hz)', 1e9))
+        return (hlp.pack_input_params('source_z', f'ZS ({chr(0x3a9)})', 50),
+                hlp.pack_input_params('load_z', f'ZL ({chr(0x3a9)})', 50),
+                hlp.pack_input_params('length', 'Length (m)', 1),
+                hlp.pack_input_params('tline_r', f'R ({chr(0x3a9)}/m)', 2),
+                hlp.pack_input_params('tline_l', 'L (H/m)', 500e-9),
+                hlp.pack_input_params('tline_g', 'G (S/m)', 1e-8),
+                hlp.pack_input_params('tline_c', 'C (F/m)', 100e-12),
+                hlp.pack_input_params('freq_start', 'f0 (Hz)', 10e3),
+                hlp.pack_input_params('freq_stop', 'f1 (Hz)', 1e9))
 
     def output_fields(self):
-        return (('frequency', 'At Frequency (Hz)', ''),
-                ('tline_td', 'Td (s)', ''),
-                ('tline_zc', f'Zc ({chr(0x3a9)})', ''),
-                ('tline_vp', 'Vp (m/s)', ''),
-                ('tline_attn', 'attn (dB/m)', ''),
-                ('tline_phase', 'phase (deg/m)', ''))
+        return (hlp.pack_input_params('frequency', 'At Frequency (Hz)'),
+                hlp.pack_input_params('tline_td', 'Td (s)'),
+                hlp.pack_input_params('tline_zc', f'Zc ({chr(0x3a9)})'),
+                hlp.pack_input_params('tline_vp', 'Vp (m/s)'),
+                hlp.pack_input_params('tline_attn', 'attn (dB/m)'),
+                hlp.pack_input_params('tline_phase', 'phase (deg/m)'))
 
     def OnSolve(self, event):
-        inputs = parse_input_fields(self, self.input_fields())
+        inputs = hlp.parse_input_fields(self, self.input_fields())
         outputs = mtl_wrapper.solve(inputs, parent_window=self)
-        populate_output_fields(self, outputs)
+        hlp.populate_output_fields(self, outputs)
 
     def OnEdit(self, event):
         editor = MtlEditor()
         resp = editor.ShowModal()
-        print(resp)
+        if resp == wx.ID_OK:
+            print(editor.parse_rlgc())
         editor.Destroy()
 
 

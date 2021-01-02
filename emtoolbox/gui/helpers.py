@@ -5,6 +5,19 @@
 import sys
 import wx
 
+def pack_input_params(name: str, label: str, default: str = '') -> dict:
+    '''Pack input field parameters into a dictionary,
+    as required by the create field set functions'''
+    return {'name': name,
+            'label': label,
+            'default': default}
+
+def pack_choice_item(name: str, label: str, choices: list) -> dict:
+    '''Pack choice field parameters into a dictionary,
+    as required by the create field set functions'''
+    return {'name': name,
+            'label': label,
+            'choices': choices}
 
 def parse_input_fields(parent: wx.Window, fields: list) -> dict:
     '''Find text input fields by name and collect their values.
@@ -45,19 +58,19 @@ def create_text_field_set(parent: wx.Window, fields: list,
     '''Create labeled text fields and insert into a sizer.
     Arguments:
         parent:     The parent window
-        fields:     [(name, label, default), ...]
+        fields:     [{name, label, default}, ...]
                 name:       name for TextCtrl
                 label:      text for StaticText
                 default:    default text for TextCtrl
         text_style: style for TextCtrl
     Return:
         result: list of new (StaticText, TextCtrl)'''
-    return [create_text_field(parent, name, label, default, text_style)
-            for name, label, default in fields]
+    return [create_text_field(parent, **field, text_style=text_style)
+            for field in fields]
 
 
 def create_text_field(parent: wx.Window, name: str, label: str,
-                      default: str = '', text_style: int = 0) -> tuple:
+                      default: str = '', text_style: int = 0, **_) -> tuple:
     '''Creates and returns a (StaticText, TextCtrl).
     Arguments:
         name:       name for TextCtrl
@@ -66,8 +79,8 @@ def create_text_field(parent: wx.Window, name: str, label: str,
         text_style: style for TextCtrl'''
     static = wx.StaticText(parent, wx.ID_ANY, label=label)
     text = wx.TextCtrl(parent, wx.ID_ANY,
-                        value=str(default), name=name,
-                        style=text_style)
+                       value=str(default), name=name,
+                       style=text_style)
     return (static, text)
 
 
@@ -76,19 +89,19 @@ def create_choice_field_set(parent: wx.Window, fields: list,
     '''Create labeled choice fields and insert into a sizer.
     Arguments:
         parent:     The parent window
-        fields:     [(name, label, choices), ...]
+        fields:     [{name:, label, choices}, ...]
                 name:       name for ComboBox
                 label:      text for StaticText
                 choices:    choices for ComboBox (list)
         combo_style: style for ComboBox
     Return:
         result: list of (StaticText, ComboBox)'''
-    return [create_choice_field(parent, name, label, choices, combo_style)
-            for name, label, choices in fields]
+    return [create_choice_field(parent, **field, combo_style=combo_style)
+            for field in fields]
 
 
 def create_choice_field(parent: wx.Window, name: str, label: str,
-                        choices: list, combo_style: int = 0) -> tuple:
+                        choices: list, combo_style: int = 0, **_) -> tuple:
     '''Creates and returns a (StaticText, ComboBox).
     Arguments:
         name:           name for ComboBox
