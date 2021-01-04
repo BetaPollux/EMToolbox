@@ -34,17 +34,6 @@ def solve_voltage(Vs, I0, Il, Zs, Zl):
     return np.array([V0, Vl])
 
 
-def create_lowloss(z0, er, length, r=0, g=0):
-    v = velocity(er)
-    l = z0 / v
-    c = 1 / (z0 * v)
-    return TLine(l, c, length, r, g)
-
-
-def create_lossless(z0, er, length):
-    return create_lowloss(z0, er, length)
-
-
 def to_db(x):
     return 20 * np.log10(x)
 
@@ -60,14 +49,15 @@ def freqspace(line, f_min, f_max, max_step):
     return np.array(steps)
 
 
+def make_callable(v):
+    if callable(v):
+        return v
+    else:
+        return lambda w: v
+
+
 class TerminatedTLine:
     def __init__(self, tline, zs, zl, vs):
-        def make_callable(v):
-            if callable(v):
-                return v
-            else:
-                return lambda w: v
-
         self.tline = tline
         self.zs = make_callable(zs)
         self.zl = make_callable(zl)
@@ -98,10 +88,21 @@ class TerminatedTLine:
 class TLine:
     def __init__(self, l, c, length, r=0, g=0):
         self.length = length
-        self.r = r
-        self.g = g
+        self.r = make_callable(r)
+        self.g = make_callable(g)
         self.l = l
         self.c = c
+
+    @classmethod
+    def create_lowloss(cls, zc, er, length, r=0, g=0):
+        vp = velocity(er)
+        l = zc / vp
+        c = 1 / (zc * vp)
+        return cls(l, c, length, r, g)
+
+    @classmethod
+    def create_lossless(cls, zc, er, length):
+        return cls.create_lowloss(zc, er, length)
 
     def wavelength(self, w):
         return 2 * np.pi * self.velocity(w) / w
@@ -116,12 +117,12 @@ class TLine:
         return self.length / self.velocity(w)
 
     def impedance(self, w):
-        return np.sqrt((self.r + 1.j * w * self.l) /
-                       (self.g + 1.j * w * self.c))
+        return np.sqrt((self.r(w) + 1.j * w * self.l) /
+                       (self.g(w) + 1.j * w * self.c))
 
     def prop_const(self, w):
-        return np.sqrt((self.r + 1.0j*w*self.l) *
-                       (self.g + 1.0j*w*self.c))
+        return np.sqrt((self.r(w) + 1.0j*w*self.l) *
+                       (self.g(w) + 1.0j*w*self.c))
 
     def phase_const(self, w, units=None):
         if units == 'deg' or units == 'deg/m':
@@ -136,9 +137,9 @@ class TLine:
     def chain_param(self, w):
         a = np.cosh(self.prop_const(w) * self.length)
         b = np.sinh(self.prop_const(w) * self.length)
-        z0 = self.impedance(w)
-        return np.array([[a, -b * z0],
-                         [-b / z0, a]])
+        zc = self.impedance(w)
+        return np.array([[a, -b * zc],
+                         [-b / zc, a]])
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ import math
 from emtoolbox.utils.constants import MU0, EPS0
 
 
-def impedance_simple(radius_w: float, radius_s: float, epsr: float) -> float:
+def impedance(radius_w: float, radius_s: float, epsr: float) -> float:
     '''Calculate characteristic impedance, assuming a DC lossless line
     Arguments:
         radius_w:       radius of wire or inner conductor (units: m)
@@ -45,7 +45,7 @@ def conductance_simple(radius_w: float, radius_s: float, cond: float):
     return 2 * math.pi * cond / math.log(radius_s / radius_w)
 
 def conductance_loss_tangent(radius_w: float, radius_s: float,
-                             epsr: float, loss_tangent: float, w: float):
+                             epsr: float, loss_tangent: float):
     '''Calculate conductance per unit length.
     Dielectric model is a constant loss tangent.
     Arguments:
@@ -53,10 +53,9 @@ def conductance_loss_tangent(radius_w: float, radius_s: float,
         radius_s:       radius of shield or outer conductor (units: m)
         epsr:           relative permittivity of dielectric (units: none)
         loss_tangent:   loss tangent (units: none)
-        w:              angular frequency (2pi * f)
     Return:
-        conductance (units: siemens/meter)'''
-    return 2 * math.pi * w * loss_tangent * EPS0 * epsr / math.log(radius_s / radius_w)
+        conductance(w)  function of w (units: siemens/meter)'''
+    return lambda w: 2 * math.pi * w * loss_tangent * EPS0 * epsr / math.log(radius_s / radius_w)
 
 def resistance_dc(radius_w: float, cond: float):
     '''Calculate resistance per unit length, assuming DC.
@@ -64,19 +63,18 @@ def resistance_dc(radius_w: float, cond: float):
         radius_w:       radius of wire or inner conductor (units: m)
         cond:           conductivity of wire (units: siemens/meter)
     Return:
-        conductance (units: siemens/meter)'''
+        resistance (units: ohm/meter)'''
     return 1.0 / (math.pi * cond * radius_w ** 2)
 
-def resistance_skin_effect(radius_w: float, cond: float, w: float):
+def resistance_skin_effect(radius_w: float, cond: float):
     '''Calculate resistance per unit length, assuming simple skin effect
     Arguments:
         radius_w:       radius of wire or inner conductor (units: m)
         cond:           conductivity of wire (units: siemens/meter)
         w:              angular frequency (2pi * f)
     Return:
-        conductance (units: siemens/meter)'''
-    skin_depth = math.sqrt(2 / (cond * w * MU0))
-    return 1.0 / (2 * math.pi * radius_w * cond * skin_depth)
+        resistance(w)   function of w (units: ohm/meter)'''
+    return lambda w: math.sqrt((w * MU0)/ (2 * math.pi ** 2 * cond)) / (2 * radius_w)
 
 if __name__ == '__main__':
     RW = 1e-3
@@ -84,7 +82,7 @@ if __name__ == '__main__':
     EPSR = 2
     L = inductance(RW, RS)
     C = capacitance(RW, RS, EPSR)
-    ZC = impedance_simple(RW, RS, EPSR)
+    ZC = impedance(RW, RS, EPSR)
     print(f'Radii {RW}, {RS}')
     print(f'EPSR {EPSR}')
     print(f'{L:.3e} H/m, {C:.3e} F/m')
