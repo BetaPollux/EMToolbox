@@ -19,22 +19,25 @@ def pack_choice_item(name: str, label: str, choices: list) -> dict:
             'label': label,
             'choices': choices}
 
-def parse_input_fields(parent: wx.Window, fields: list) -> dict:
+def parse_input_fields(parent: wx.Window, fields: list, convert: type = None) -> dict:
     '''Find text input fields by name and collect their values.
     Fields must be derived from wx.TextEntry
     Arguments:
         parent: The parent window
-        fields: (name, *args)
+        fields: [{ name: window name}]
+        type:   convert values to the provided type
     Return:
         result: { name: value (str) }'''
     result = {}
-    for name, *_ in fields:
-        field = parent.FindWindowByName(name)
-        if field and isinstance(field, wx.TextEntry):
-            result[name] = field.GetValue()
+    for field in fields:
+        window = parent.FindWindowByName(field['name'])
+        if window and isinstance(window, wx.TextEntry):
+            if convert:
+                result[field['name']] = convert(window.GetValue())
+            else:
+                result[field['name']] = window.GetValue()
         else:
-            print(f'Could not parse input field: {name}',
-                  file=sys.stderr)
+            raise Exception(f'Could not parse input field: {field["name"]}')
     return result
 
 
@@ -45,12 +48,11 @@ def populate_output_fields(parent: wx.Window, fields: dict) -> None:
         parent: The parent window
         fields: { name: value }'''
     for name, value in fields.items():
-        field = parent.FindWindowByName(name)
-        if field and isinstance(field, wx.TextEntry):
-            field.SetValue(str(value))
+        window = parent.FindWindowByName(name)
+        if window and isinstance(window, wx.TextEntry):
+            window.SetValue(str(value))
         else:
-            print(f'Could not populate output field: {name}, {value}',
-                  file=sys.stderr)
+            raise Exception(f'Could not populate output field: {name}, {value}')
 
 
 def create_text_field_set(parent: wx.Window, fields: list,

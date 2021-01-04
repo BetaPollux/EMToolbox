@@ -6,6 +6,8 @@ import wx
 import emtoolbox.gui.helpers as hlp
 from emtoolbox.gui.mtl_canvas import MtlCanvas
 import emtoolbox.tline.coax as coax
+import emtoolbox.utils.constants as const
+from emtoolbox.tline.tline import TLine
 
 
 class MtlEditor(wx.Dialog):
@@ -32,21 +34,41 @@ class MtlEditor(wx.Dialog):
         main_sizer.Fit(self)
         main_sizer.SetSizeHints(self)
 
-    def parse_rlgc(self) -> dict:
+    def parse_rlgc_functions(self) -> dict:
         '''Parse selections and return the RLGC calculation functions'''
         result = {}
-        result['L'] = coax.inductance
-        result['C'] = coax.capacitance
+        result['l'] = coax.inductance
+        result['c'] = coax.capacitance
         for choice in self.choice_fields():
             if choice['name'] == 'r_models':
                 sel = self.FindWindowByName(choice['name']).GetSelection()
-                result['R'] = choice['functions'][sel]
+                result['r'] = choice['functions'][sel]
             elif choice['name'] == 'g_models':
                 sel = self.FindWindowByName(choice['name']).GetSelection()
-                result['G'] = choice['functions'][sel]
+                result['g'] = choice['functions'][sel]
         return result
 
-    def choice_fields(self):
+    def parse_rlgc(self) -> dict:
+        '''Collect the RLGC generator functions'''
+        functions = self.parse_rlgc_functions()
+        inputs = hlp.parse_input_fields(self, self.input_fields(), float)
+        result = {}
+        for key, func in functions.items():
+            if func:
+                result[key] = func(**inputs)  # TODO filter the kwargs
+        return result
+
+    def parse_length(self) -> float:
+        '''Get the line length'''    
+        return hlp.parse_input_fields(self, [{'name': 'length'}], float)['length']
+
+    def get_tline(self) -> TLine:
+        '''Get the transmission line'''
+        line = TLine(**self.parse_rlgc(), length=self.parse_length())
+        return line
+
+    def choice_fields(self) -> list:
+        '''Collection of drop-down choices in the editor'''
         return ({'name':      'geometry',
                  'label':     'Geometry',
                  'choices':   ['coax', 'two-wire', 'wire-over-ground',
@@ -60,16 +82,15 @@ class MtlEditor(wx.Dialog):
                  'choices':   ['None', 'Conductivity', 'Loss Tangent'],
                  'functions': [None, coax.conductance_simple, coax.conductance_loss_tangent]})
 
-    def input_fields(self):
-        return ({'name':    'radius_w',
-                 'label':   'Inner radius',
-                 'default': 1e-3},
-                {'name':    'radius_s',
-                 'label':   'Outer radius',
-                 'default': 3e-3},
-                {'name':    'epsr',
-                 'label':   'Rel. Permittivity',
-                 'default': 1.8})
+    def input_fields(self) -> list:
+        '''Collection of user text input fields'''
+        return (hlp.pack_input_params('radius_w', 'Inner radius (m)', 1e-3),
+                hlp.pack_input_params('radius_s', 'Outer radius (m)', 3e-3),
+                hlp.pack_input_params('epsr', 'Rel. Permittivity', 1.8),
+                hlp.pack_input_params('length', 'Length (m)', 1.0),
+                hlp.pack_input_params('cond_c', 'Wire Conductivity (s/m)', const.COND_CU),
+                hlp.pack_input_params('cond_d', 'Dielectric Conductivity (s/m)', 1e-14),
+                hlp.pack_input_params('loss_tangent', 'Loss Tangent', 0.02))
 
 
 if __name__ == '__main__':

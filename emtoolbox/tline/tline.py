@@ -86,22 +86,22 @@ class TerminatedTLine:
 
 
 class TLine:
-    def __init__(self, l, c, length, r=0, g=0):
+    def __init__(self, l, c, length=1.0, r=None, g=None):
         self.length = length
-        self.r = make_callable(r)
-        self.g = make_callable(g)
+        self.r = make_callable(r) if r else make_callable(0)
+        self.g = make_callable(g) if g else make_callable(0)
         self.l = l
         self.c = c
 
     @classmethod
-    def create_lowloss(cls, zc, er, length, r=0, g=0):
+    def create_lowloss(cls, zc, er, length=1.0, r=0, g=0):
         vp = velocity(er)
         l = zc / vp
         c = 1 / (zc * vp)
         return cls(l, c, length, r, g)
 
     @classmethod
-    def create_lossless(cls, zc, er, length):
+    def create_lossless(cls, zc, er, length=1.0):
         return cls.create_lowloss(zc, er, length)
 
     def wavelength(self, w):

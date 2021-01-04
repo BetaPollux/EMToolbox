@@ -86,7 +86,11 @@ class MtlFrame(wx.Frame):
         editor = MtlEditor()
         resp = editor.ShowModal()
         if resp == wx.ID_OK:
-            print(editor.parse_rlgc())
+            line = editor.get_tline()
+            w = 6.28e6
+            print(f'Zc {line.impedance(w):.3f} td {line.delay(w):.3e}')
+            print(f'L {line.l:.3e} C {line.c:.3e}')
+            print(f'attn {line.attn_const(w):.3e}')
         editor.Destroy()
 
 
