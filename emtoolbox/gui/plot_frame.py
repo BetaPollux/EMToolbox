@@ -71,7 +71,7 @@ if __name__ == "__main__":
     app = wx.App(redirect=False)
     frame = PlotFrame()
 
-    x = np.linspace(0, 100, 50)
+    x = np.linspace(1, 100, 50)
     v = 1 / x**2
     i = 1 + x
 

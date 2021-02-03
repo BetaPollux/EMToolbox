@@ -23,6 +23,9 @@ class MtlEditor(wx.Dialog):
         btn_sizer = self.CreateButtonSizer(wx.OK | wx.CANCEL)
         self.canvas = MtlCanvas(self, size=(320, 240))
 
+        for _, txt in text_fields:
+            self.Bind(wx.EVT_TEXT, self.OnInput, txt)
+
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         content_sizer = wx.BoxSizer(wx.HORIZONTAL)
         field_sizer = hlp.layout_fields([*choice_fields, *text_fields])
@@ -33,6 +36,21 @@ class MtlEditor(wx.Dialog):
         self.SetSizer(main_sizer)
         main_sizer.Fit(self)
         main_sizer.SetSizeHints(self)
+        self.update_canvas()
+
+    def OnInput(self, event):
+        self.update_canvas()
+
+    def update_canvas(self) -> None:
+        inputs = hlp.parse_input_fields(self, 
+                                        [{'name': name} for name in ('radius_w', 'radius_s')],
+                                        float)
+        rw = inputs.get('radius_w', 1e-3)
+        rs = inputs.get('radius_s', 3e-3)
+        self.canvas.clear_shapes()
+        self.canvas.add_shape('circle', 0, 0, rs)
+        self.canvas.add_shape('circle', 0, 0, rw)
+        self.canvas.redraw()
 
     def parse_rlgc_functions(self) -> dict:
         '''Parse selections and return the RLGC calculation functions'''

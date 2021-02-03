@@ -3,62 +3,44 @@
 '''A canvas window for drawing transmission lines'''
 
 import wx
+import numpy as np
+import matplotlib as mpl
+from matplotlib.backends.backend_wxagg \
+    import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.backends.backend_wxagg \
+    import NavigationToolbar2WxAgg as NavigationToolbar
 
 class MtlCanvas(wx.Window):
     def __init__(self, parent, size=(80, 80)):
         wx.Window.__init__(self, parent, size=size)
-        self.buffer = None
-        self.reInitBuffer = True
-        self.scale = 1.0
-        self.originalSize = None
-        self.shapes = []
-        self.SetBackgroundColour("White")
-        self.Bind(wx.EVT_SIZE, self.OnSize)
-        self.Bind(wx.EVT_IDLE, self.OnIdle)
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.figure = mpl.figure.Figure(figsize=(5, 2))
+        self.ax = self.figure.gca()
 
-    def InitBuffer(self):
-        size = self.GetClientSize()
-        self.buffer = wx.Bitmap(size.width, size.height)
-        dc = wx.BufferedDC(None, self.buffer)
-        dc.SetBackground(wx.Brush(self.GetBackgroundColour()))
-        dc.Clear()
+        self.canvas = FigureCanvas(self, -1, self.figure)
+        self.toolbar = NavigationToolbar(self.canvas)
+        self.toolbar.Realize()
 
-    def DrawShapes(self):
-        if self.originalSize:
-            dc = wx.BufferedDC(wx.ClientDC(self), self.buffer)
-            x_orig, y_orig = self.originalSize
-            x_new, y_new = dc.GetSize()
-            x_scale = x_new / x_orig
-            y_scale = y_new / y_orig
-            self.scale = min(x_scale, y_scale)
-            dc.SetUserScale(self.scale, self.scale)
-            print('size', dc.GetSize(), 'scale', self.scale)
-            for style, *params in self.shapes:
-                if style == 'circle':
-                    dc.DrawCircle(*params)
-                elif style == 'rect':
-                    dc.DrawRectangle(*params)
-            self.reInitBuffer = False
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.canvas, 1, wx.EXPAND)
+        sizer.Add(self.toolbar, 0, wx.LEFT | wx.EXPAND)
+        self.SetSizer(sizer)
 
-    def AddShape(self, style, *args):
-        self.shapes.append((style, *args))
-
-    def OnSize(self, event):
-        self.reInitBuffer = True
-
-    def OnIdle(self, event):
-        if self.reInitBuffer:
-            self.InitBuffer()
-            self.DrawShapes()
-            self.Refresh(False)
-
-    def OnPaint(self, event):
-        if self.buffer:
-            dc = wx.BufferedPaintDC(self, self.buffer)
-            if self.originalSize is None:
-                self.originalSize = dc.GetSize()
-                print('originalSize', self.originalSize)
+    def add_shape(self, style, *args):
+        if style == 'circle':
+            x, y, r = args
+            shape = mpl.patches.Circle([x, y], r, fill=False)
+        elif style == 'rect':
+            x, y, w, h = args
+            shape = mpl.patches.Rectangle([x, y], w, h, fill=False)
+        self.ax.add_patch(shape)
+        self.ax.autoscale_view()
+        self.ax.set_aspect(1)
+    
+    def clear_shapes(self):
+        self.ax.cla()
+    
+    def redraw(self):
+        self.figure.canvas.draw()
 
 
 if __name__ == '__main__':
@@ -66,13 +48,13 @@ if __name__ == '__main__':
         def __init__(self, parent):
             wx.Frame.__init__(self, parent, -1, "Mtl Canvas Frame",
                     size=(800,600))
-            self.canvas = MtlCanvas(self, -1)
+            self.canvas = MtlCanvas(self)
 
     app = wx.App(redirect=False)
     frame = MtlCanvasFrame(None)
-    frame.canvas.AddShape('rect', 0, 0, 750, 550)
-    frame.canvas.AddShape('circle', 50, 50, 50)
-    frame.canvas.AddShape('circle', 375, 275, 75)
-    frame.canvas.AddShape('circle', 650, 450, 100)
+    frame.canvas.add_shape('rect', 0, 1.0, 0.5, 0.75)
+    frame.canvas.add_shape('circle', 0, 0, 2.5)
+    frame.canvas.add_shape('circle', -0.75, 0, 0.5)
+    frame.canvas.add_shape('circle', 0.75, 0.25, 0.5)
     frame.Show(True)
     app.MainLoop()

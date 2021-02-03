@@ -76,6 +76,7 @@ def resistance_skin_effect(radius_w: float, cond_c: float, **_):
         cond_c:         conductivity of conductors (units: siemens/meter)
     Return:
         resistance(w)   function of w (units: ohm/meter)'''
+    # TODO invalid at low frequency
     return lambda w: math.sqrt((w * MU0)/ (2 * math.pi ** 2 * cond_c)) / (2 * radius_w)
 
 if __name__ == '__main__':
