@@ -1,5 +1,6 @@
 #! /usr/bin/python3
 
+from datetime import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -39,6 +40,7 @@ class Grid1D:
         self.cb[indices] = 0.5 / (er * (1 + eaf))
 
     def solve(self, total_time, n_frames=125):
+        start_time = datetime.now()
         self.t = np.arange(total_time, step=self.dt)
         frame_ids = np.linspace(0, len(self.t) - 1,
                                 int(n_frames), dtype='int64')
@@ -57,9 +59,7 @@ class Grid1D:
                     time_id,
                     100.0 * time_id / len(self.t)))
 
-            for i in range(1, self.ndx):
-                self.ez[i] = self.ca[i] * self.ez[i] + self.cb[i] * (
-                             self.hy[i - 1] - self.hy[i])
+            self.ez[1:] = self.ca[1:] * self.ez[1:] + self.cb[1:] * (self.hy[:-1] - self.hy[1:])
 
             for source in self.sources:
                 self.ez[source.position] += source.solve(time)
@@ -69,9 +69,7 @@ class Grid1D:
             self.ez[-1] = abc_right.pop()
             abc_right.insert(0, self.ez[-2])
 
-            for i in range(self.ndx - 1):
-                self.hy[i] = self.hy[i] + 0.5 * (
-                             self.ez[i] - self.ez[i + 1])
+            self.hy[:-1] = self.hy[:-1] + 0.5 * (self.ez[:-1] - self.ez[1:])
 
             for probe in self.probes:
                 probe.data[time_id] = self.ez[probe.position]
@@ -79,7 +77,9 @@ class Grid1D:
             if time_id in frame_ids:
                 self.data.append(self.ez.copy())
 
-        print('Solve complete')
+        end_time = datetime.now()
+        print('Solve complete!')
+        print(f'Elapsed {end_time - start_time}')
 
     def add_source(self, source):
         self.sources.append(source)
