@@ -21,13 +21,23 @@ def test_trough_analytical():
     assert V[1, 2] == approx(14.9810, abs=1e-4)
 
 
+def test_poisson_1d():
+    w = 5.0
+    X = np.linspace(0, w, 101)
+    bc = {'v_left': -2, 'v_right': 5}
+    V = fdm.poisson_1d(X, **bc, conv=1e-3)
+    Va = fdm.plates_analytical(X, **bc)
+    assert V == approx(Va, abs=0.01)
+
+
 def test_poisson_2d():
     w = 2.0
     h = 1.0
     x = np.linspace(0, w, 101)
     y = np.linspace(0, h, 51)
     X, Y = np.meshgrid(x, y)
-    V = fdm.poisson_2d(X, Y, v_top=10, v_left=5, N=5000)
-    Va = fdm.trough_analytical(X, Y, v_top=10, v_left=5)
-    error = (Va - V)[1:-1, 1:-1]  # Exclude boundaries
-    assert np.max(error) < 0.01 * np.max(V)
+    bc = {'v_top': 10, 'v_left': 5, 'v_right': -2, 'v_bottom': -4}
+    V = fdm.poisson_2d(X, Y, **bc, conv=1e-3)
+    Va = fdm.trough_analytical(X, Y, **bc)
+    # Exclude boundaries due to analytical error at corners
+    assert V[1:-1, 1:-1] == approx(Va[1:-1, 1:-1], abs=0.1)  
