@@ -8,18 +8,30 @@ import matplotlib as mpl
 
 
 def poisson_1d(X, v_left: float=0, v_right: float=0,
-               conv: float= 1e-3, Nmax: int=1e5, charge=None):
+               dielectric=None, charge=None,
+               conv: float= 1e-3, Nmax: int=1e5):
     '''One-dimension Poisson equation with fixed potential boundaries.
-    Normalized charge density ps/eps can be provided via the charge argument'''
+    Normalized charge density ps/eps can be provided via the charge argument
+    Dielectric is an array of relative permittivity, located at half-grid points
+        x0    x1    x2  ...  xn
+           e0    e1    ... en-1   en   [en is superfluous]
+    Note: Charge density is currently incompatible with dielectric'''
+    if charge is not None and dielectric is not None:
+        raise Exception('Charge is not support with dielectric')
     V = np.zeros_like(X)
     V[0] = v_left
     V[-1] = v_right
     V[1:-1] = 0.5 * (v_left + v_right)
     for n in range(int(Nmax)):
         V_old = np.copy(V)
-        V[1:-1] = 0.5 * (V[2:] + V[:-2])
-        if charge is not None:
-            V -= 0.5 * charge
+        if dielectric is None:
+            V[1:-1] = 0.5 * (V[2:] + V[:-2])
+            if charge is not None:
+                V[1:-1] -= 0.5 * charge[1:-1]
+        else:
+            er1 = dielectric[1:-1]
+            er2 = dielectric[2:]
+            V[1:-1] = (er2 * V[2:] + er1 * V[:-2]) / (er1 + er2)
         err = np.sum(np.abs(V - V_old))
         if err < conv:
             break
@@ -48,7 +60,7 @@ def poisson_2d(X, Y,
         V[1:-1, 1:-1] = 0.25 * (V[2:, 1:-1] + V[:-2, 1:-1] +
                                 V[1:-1, 2:] + V[1:-1, :-2])
         if charge is not None:
-            V -= 0.25 * charge
+            V[1:-1, 1:-1] -= 0.25 * charge[1:-1, 1:-1]
         err = np.sum(np.abs(V - V_old))
         if err < conv:
             break
@@ -58,6 +70,23 @@ def poisson_2d(X, Y,
 
 def plates_analytical(X, v_left: float=0, v_right: float=0):
     return (v_right - v_left) / np.max(X) * X + v_left
+
+
+def plates_dielectric_analytical(X, er1, er2, xb,
+                                 v_left: float=0, v_right: float=0):
+    '''Parallel plates with 2 dielectrics of relative permittivity er1 and er2
+    er1 is for X.min() < X <= xb, and er2 for xb < X <= X.max()'''
+    t1 = xb
+    t2 = X.max() - X.min() - xb
+    C1 = er1 / t1
+    C2 = er2 / t2
+    C_total = C1 * C2 / (C1 + C2)
+
+    Dn = C_total * (v_right - v_left)
+    E1 = Dn / er1
+    E2 = Dn / er2
+
+    return np.where(X <= xb, E1 * X + v_left, E2 * (X - xb) + E1 * t1)
 
 
 def trough_analytical(X, Y,
@@ -133,6 +162,32 @@ def example_poisson_2d():
     plt.show()
 
 
+def example_parallel_plates():
+    w = 4e-3
+    X = np.linspace(0, w, 101)
+    bc = {'v_left': 0, 'v_right': 200}
+    b = int(0.25 * len(X))
+    er1 = 5.0
+    er2 = 1.0
+    er = np.where(X <= X[b], er1, er2)
+
+    V = poisson_1d(X, dielectric=er, **bc)
+    Va = plates_dielectric_analytical(X, er1, er2, X[b], **bc)
+
+    fig, ax = plt.subplots()
+    ax.plot(X, V, label='FDM')
+    ax.plot(X, Va, label='Analytical')
+    ax.set_ylabel('Potential (V)')
+    ax.set_xlim([0, w])
+    ax.legend()
+    ax.grid()
+    err_ax = ax.twinx()
+    err_ax.plot(X, V - Va, 'g', label='Error')
+    err_ax.set_ylabel('Error', color='g')
+    plt.show()
+
+
 if __name__ == '__main__':
-    example_poisson_1d()
-    example_poisson_2d()
+    #example_poisson_1d()
+    #example_poisson_2d()
+    example_parallel_plates()
