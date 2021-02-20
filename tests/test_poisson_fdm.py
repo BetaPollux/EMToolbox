@@ -57,7 +57,7 @@ def test_poisson_1d_dielectric():
     b = int(0.25 * len(X))
     er1 = 5.0
     er2 = 1.0
-    er = np.where(X <= X[b], er1, er2)
+    er = np.where(X[:-1] < X[b], er1, er2)
 
     V = fdm.poisson_1d(X, dielectric=er, **bc, conv=1e-4)
     Va = fdm.plates_dielectric_analytical(X, er1, er2, X[b], **bc)

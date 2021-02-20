@@ -14,7 +14,7 @@ def poisson_1d(X, v_left: float=0, v_right: float=0,
     Normalized charge density ps/eps can be provided via the charge argument
     Dielectric is an array of relative permittivity, located at half-grid points
         x0    x1    x2  ...  xn
-           e0    e1    ... en-1   en   [en is superfluous]
+           e0    e1  ...  en-1   [one less point]
     Note: Charge density is currently incompatible with dielectric'''
     if charge is not None and dielectric is not None:
         raise Exception('Charge is not support with dielectric')
@@ -29,8 +29,8 @@ def poisson_1d(X, v_left: float=0, v_right: float=0,
             if charge is not None:
                 V[1:-1] -= 0.5 * charge[1:-1]
         else:
-            er1 = dielectric[1:-1]
-            er2 = dielectric[2:]
+            er1 = dielectric[:-1]
+            er2 = dielectric[1:]
             V[1:-1] = (er2 * V[2:] + er1 * V[:-2]) / (er1 + er2)
         err = np.sum(np.abs(V - V_old))
         if err < conv:
@@ -92,8 +92,8 @@ def plates_dielectric_analytical(X, er1, er2, xb,
 def trough_analytical(X, Y,
                       v_left: float=0, v_right: float=0,
                       v_top: float=0, v_bottom: float=0):
-    a = np.max(X)
-    b = np.max(Y)
+    a = X.max() - X.min()
+    b = Y.max() - Y.min()
     V = np.zeros_like(X)
     for n in range(1, 101, 2):
         k1 = 4 / (n * np.pi) * np.sin(n * np.pi * Y / b) / np.sinh(n * np.pi * a / b)
@@ -169,25 +169,25 @@ def example_parallel_plates():
     b = int(0.25 * len(X))
     er1 = 5.0
     er2 = 1.0
-    er = np.where(X <= X[b], er1, er2)
+    er = np.where(X[:-1] < X[b], er1, er2)
 
     V = poisson_1d(X, dielectric=er, **bc)
     Va = plates_dielectric_analytical(X, er1, er2, X[b], **bc)
 
     fig, ax = plt.subplots()
     ax.plot(X, V, label='FDM')
-    ax.plot(X, Va, label='Analytical')
+    ax.plot(X, Va, lw=0.5, label='Analytical')
     ax.set_ylabel('Potential (V)')
     ax.set_xlim([0, w])
     ax.legend()
     ax.grid()
     err_ax = ax.twinx()
-    err_ax.plot(X, V - Va, 'g', label='Error')
+    err_ax.plot(X, V - Va, 'g', ls='dashed', label='Error')
     err_ax.set_ylabel('Error', color='g')
     plt.show()
 
 
 if __name__ == '__main__':
-    #example_poisson_1d()
-    #example_poisson_2d()
+    example_poisson_1d()
+    example_poisson_2d()
     example_parallel_plates()
