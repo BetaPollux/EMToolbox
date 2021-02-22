@@ -68,27 +68,6 @@ def poisson_2d(X, Y,
     return V
 
 
-def plates_analytical(X, v_left: float=0, v_right: float=0):
-    return (v_right - v_left) / np.max(X) * X + v_left
-
-
-def plates_dielectric_analytical(X, er1, er2, xb,
-                                 v_left: float=0, v_right: float=0):
-    '''Parallel plates with 2 dielectrics of relative permittivity er1 and er2
-    er1 is for X.min() < X <= xb, and er2 for xb < X <= X.max()'''
-    t1 = xb
-    t2 = X.max() - X.min() - xb
-    C1 = er1 / t1
-    C2 = er2 / t2
-    C_total = C1 * C2 / (C1 + C2)
-
-    Dn = C_total * (v_right - v_left)
-    E1 = Dn / er1
-    E2 = Dn / er2
-
-    return np.where(X <= xb, E1 * X + v_left, E2 * (X - xb) + E1 * t1)
-
-
 def trough_analytical(X, Y,
                       v_left: float=0, v_right: float=0,
                       v_top: float=0, v_bottom: float=0):
@@ -164,26 +143,28 @@ def example_poisson_2d():
 
 def example_parallel_plates():
     w = 4e-3
-    X = np.linspace(0, w, 101)
+    X, dx = np.linspace(0, w, 101, retstep=True)
     bc = {'v_left': 0, 'v_right': 200}
-    b = int(0.25 * len(X))
     er1 = 5.0
     er2 = 1.0
-    er = np.where(X[:-1] < X[b], er1, er2)
+    era = np.where(X[:-1] < 1e-3, er1, er2)
+    erb = np.select([X[:-1] < 2e-3, X[:-1] < 3e-3, X[:-1] < 4e-3],
+                    [er2, er1, er2])
 
-    V = poisson_1d(X, dielectric=er, **bc)
-    Va = plates_dielectric_analytical(X, er1, er2, X[b], **bc)
+    V1 = poisson_1d(X, dielectric=era, **bc)
+    V2 = poisson_1d(X, dielectric=erb, **bc)
 
     fig, ax = plt.subplots()
-    ax.plot(X, V, label='FDM')
-    ax.plot(X, Va, lw=0.5, label='Analytical')
+    ax.plot(X, V1, label='2-layer')
+    ax.plot(X, V2, label='3-layer')
     ax.set_ylabel('Potential (V)')
     ax.set_xlim([0, w])
+    er_ax = ax.twinx()
+    er_ax.plot(X[:-1] + 0.5 * dx, era, ls=':')
+    er_ax.plot(X[:-1] + 0.5 * dx, erb, ls=':')
+    er_ax.set_ylabel(r'$\epsilon_r$')
     ax.legend()
     ax.grid()
-    err_ax = ax.twinx()
-    err_ax.plot(X, V - Va, 'g', ls='dashed', label='Error')
-    err_ax.set_ylabel('Error', color='g')
     plt.show()
 
 
