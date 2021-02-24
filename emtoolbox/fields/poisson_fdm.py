@@ -5,10 +5,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+try:
+    from emtoolbox.utils.constants import EPS0
+except ImportError:
+    EPS0 = 8.854e-12
 
 
-def poisson_1d(X, v_left: float=0, v_right: float=0,
-               dielectric=None, charge=None,
+def poisson_1d(X: np.ndarray, v_left: float=0, v_right: float=0,
+               dielectric: np.ndarray=None, charge: np.ndarray=None,
                conv: float= 1e-3, Nmax: int=1e5):
     '''One-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument
@@ -39,12 +43,16 @@ def poisson_1d(X, v_left: float=0, v_right: float=0,
     return V
 
 
-def poisson_2d(X, Y,
+def poisson_2d(X: np.ndarray, Y: np.ndarray,
                v_left: float=0, v_right: float=0,
                v_top: float=0, v_bottom: float=0,
-               conv: float= 1e-3, Nmax: int=1e5, charge=None):
+               conv: float= 1e-3, Nmax: int=1e5, charge: np.ndarray=None):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
+    if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
+        raise Exception('X and Y must have xy indexing')
+    if X[0, 1] - X[0, 0] != Y[1, 0] - Y[0, 0]:
+        raise Exception('X and Y must have the same spacing')
     V = np.zeros_like(X)
     V[:, 0] = v_left
     V[:, -1] = v_right
@@ -68,7 +76,16 @@ def poisson_2d(X, Y,
     return V
 
 
-def trough_analytical(X, Y,
+def gauss_1d(X: np.ndarray, V: np.ndarray, er: np.ndarray, i: int):
+    '''One-dimensional Gauss' law, returning enclosed charge
+    Evaluated at array index i
+    Note: charge polarity is positive for V increasing with X'''
+    dx = X[i+1] - X[i-1]
+    return EPS0 * (er[i] * V[i+1] - er[i-1] * V[i-1] + 
+                   (er[i-1] - er[i]) * V[i]) / dx
+
+
+def trough_analytical(X: np.ndarray, Y: np.ndarray,
                       v_left: float=0, v_right: float=0,
                       v_top: float=0, v_bottom: float=0):
     a = X.max() - X.min()
@@ -154,7 +171,7 @@ def example_parallel_plates():
     V1 = poisson_1d(X, dielectric=era, **bc)
     V2 = poisson_1d(X, dielectric=erb, **bc)
 
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     ax.plot(X, V1, label='2-layer')
     ax.plot(X, V2, label='3-layer')
     ax.set_ylabel('Potential (V)')

@@ -2,6 +2,7 @@
 
 import numpy as np
 from emtoolbox.fields.pplate import ParallelPlates
+from emtoolbox.fields.coaxcap import CoaxCapacitor
 import emtoolbox.fields.poisson_fdm as fdm
 import pytest
 from pytest import approx
@@ -63,3 +64,51 @@ def test_poisson_2d():
     Va = fdm.trough_analytical(X, Y, **bc)
     # Exclude boundaries due to analytical error at corners
     assert V[1:-1, 1:-1] == approx(Va[1:-1, 1:-1], abs=0.1)  
+
+
+def test_poisson_2d_indexing():
+    x = np.linspace(0, 2.0, 101)
+    y = np.linspace(0, 1.0, 51)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+    with pytest.raises(Exception):
+        fdm.poisson_2d(X, Y)
+
+
+def test_poisson_2d_spacing():
+    x = np.linspace(0, 2.0, 101)
+    y = np.linspace(0, 2.0, 51)
+    X, Y = np.meshgrid(x, y)
+    with pytest.raises(Exception):
+        fdm.poisson_2d(X, Y)
+
+
+def test_gauss_1d():
+    pp = ParallelPlates(2.0, 15e-3)
+    X, er = pp.get_arrays(101)
+    v1 = 10.0
+    V = pp.potential(X, v1)
+    Q = np.array([fdm.gauss_1d(X, V, er, i) for i in range(1, len(X) - 1)])
+    Qa = pp.charge(v1)
+    assert Q == approx(Qa)
+
+
+def test_gauss_1d_dielectric():
+    pp = ParallelPlates((2.0, 4.0), (3e-3, 2e-3))
+    X, er = pp.get_arrays(101)
+    v1 = 10.0
+    V = pp.potential(X, v1)
+    Q = np.array([fdm.gauss_1d(X, V, er, i) for i in range(1, len(X) - 1)])
+    Qa = pp.charge(v1)
+    assert Q == approx(Qa)
+
+
+def test_gauss_1d_coax():
+    cc = CoaxCapacitor(0.5e-3, 5.2, 3.5e-3)
+    X, er = cc.get_arrays(101)
+    v1 = 10.0
+    V = cc.potential(X, v1)
+    # 1D gauss returns a charge density over circumference
+    # Result is negative due to direction of X
+    Q = np.array([-2*np.pi*X[i]*fdm.gauss_1d(X, V, er, i) for i in range(1, len(X) - 1)])
+    Qa = cc.charge(v1)
+    assert Q == approx(Qa, abs=1e-11)
