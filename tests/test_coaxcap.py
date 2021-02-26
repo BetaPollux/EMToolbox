@@ -32,7 +32,7 @@ def test_efield():
     X = np.linspace(ri, ro, N)
     Va = 10.0
     expected = -Va / X / np.log(ri / ro)
-    efield = cc.efield(X, Va)
+    efield = cc.efield(X, Va=Va)
     assert efield == approx(expected)
 
 
@@ -44,7 +44,7 @@ def test_potential():
     X = np.linspace(ri, ro, N)
     Va = 10.0
     expected = Va / np.log(ri / ro) * np.log(X / ro)
-    potential = cc.potential(X, Va)
+    potential = cc.potential(X, Va=Va)
     assert potential == approx(expected)
 
 
@@ -57,7 +57,45 @@ def test_potential_ref():
     Va = 10.0
     Vref = 5.0
     expected = Vref + Va / np.log(ri / ro) * np.log(X / ro)
-    potential = cc.potential(X, Va, Vref=Vref)
+    potential = cc.potential(X, Va=Va, Vref=Vref)
+    assert potential == approx(expected)
+
+
+def test_potential_inner():
+    ri = 0.5e-3
+    ro = 4.0e-3
+    N = 5
+    cc = CoaxCapacitor(ri, 5.2, ro - ri)
+    X = np.linspace(0, ri, N)
+    Va = 10.0
+    potential = cc.potential(X, Va=Va)
+    assert potential == approx(Va)
+
+
+def test_potential_outer():
+    ri = 0.5e-3
+    ro = 4.0e-3
+    Vref = 5.0
+    N = 5
+    cc = CoaxCapacitor(ri, 5.2, ro - ri)
+    X = np.linspace(ro, 10 * ro, N)
+    Va = 10.0
+    potential = cc.potential(X, Va=Va, Vref=Vref)
+    assert potential == approx(Vref)
+
+
+def test_potential_diagonal():
+    ri = 0.5e-3
+    ro = 4.0e-3
+    N = 5
+    cc = CoaxCapacitor(ri, 5.2, ro - ri)
+    R = np.linspace(ri, ro, N)
+    theta = np.pi / 4
+    X = R * np.cos(theta)
+    Y = R * np.sin(theta)
+    Va = 10.0
+    expected = Va / np.log(ri / ro) * np.log(R / ro)
+    potential = cc.potential(X, Y, Va=Va)
     assert potential == approx(expected)
 
 
@@ -81,7 +119,7 @@ def test_2layer():
     er2, t2 = 5.0, 2.5e-3
     cc = CoaxCapacitor(ri, (er1, er2), (t1, t2))
     X, er = cc.get_arrays(N=5)
-    assert cc.radius_outer == approx(ri + t1 + t2)
+    assert cc.ro == approx(ri + t1 + t2)
     assert X == approx([20e-3, 21.25e-3, 22.5e-3, 23.75e-3, 25e-3])
     assert er == approx([er1, er1, er2, er2])
 

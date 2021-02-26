@@ -28,8 +28,8 @@ class CoaxCapacitor:
         else:
             self.sheaths = list(zip([er], [t], [ri]))
 
-        self.radius_inner = ri
-        self.radius_outer = ri + np.sum(t)
+        self.ri = ri
+        self.ro = ri + np.sum(t)
         self.length = length
 
     def capacitance(self):
@@ -42,27 +42,33 @@ class CoaxCapacitor:
         '''Get arrays of position and relative permittivity (X, er)
         X has length N
         er is defined at half-grid points, so has length N-1'''
-        X = np.linspace(self.radius_inner, self.radius_outer, N)
+        X = np.linspace(self.ri, self.ro, N)
         cond = [(X < x0 + t) for _, t, x0 in self.sheaths]
         choice = [er for er, *_ in self.sheaths]
         return (X, np.select(cond, choice)[:-1])
 
-    def efield(self, X, Va):
+    def efield(self, X, Va, Y=None):
         '''Get electric field for the specified differential voltage and locations'''
-        if X.min() < self.radius_inner or X.max() > self.radius_outer:
+        if X.min() < self.ri or X.max() > self.ro:
             raise Exception('Invalid range of X provided')
         if len(self.sheaths) > 1:
             raise Exception('Multiple dielectrics not yet supported')
-        return -Va / X / np.log(self.radius_inner / self.radius_outer)
+        return -Va / X / np.log(self.ri / self.ro)
 
-    def potential(self, X, Va, Vref=0):
+    def potential(self, X, Y=None, /, Va=1, Vref=0):
         '''Get potential for the specified differential voltage and locations.
         The reference voltage can be used to offset the results'''
-        if X.min() < self.radius_inner or X.max() > self.radius_outer:
-            raise Exception('Invalid range of X provided')
+        if Y is None:
+            R = X
+        else:
+            R = np.sqrt(X**2 + Y**2)
         if len(self.sheaths) > 1:
             raise Exception('Multiple dielectrics not yet supported')
-        return Vref + Va / np.log(self.radius_inner / self.radius_outer) * np.log(X / self.radius_outer)
+        condlist = [R < self.ri, R <= self.ro, R > self.ro]
+        choicelist = [Vref + Va,
+                      Vref + Va / np.log(self.ri / self.ro) * np.log(R / self.ro, where=(R>=self.ri)),
+                      Vref]
+        return np.select(condlist, choicelist)
 
     def charge(self, Va):
         return self.capacitance() * Va

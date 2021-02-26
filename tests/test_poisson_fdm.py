@@ -106,9 +106,39 @@ def test_gauss_1d_coax():
     cc = CoaxCapacitor(0.5e-3, 5.2, 3.5e-3)
     X, er = cc.get_arrays(101)
     v1 = 10.0
-    V = cc.potential(X, v1)
+    V = cc.potential(X, Va=v1)
     # 1D gauss returns a charge density over circumference
     # Result is negative due to direction of X
     Q = np.array([-2*np.pi*X[i]*fdm.gauss_1d(X, V, er, i) for i in range(1, len(X) - 1)])
     Qa = cc.charge(v1)
     assert Q == approx(Qa, abs=1e-11)
+
+def test_poisson_1d_bc():
+    X = np.linspace(0, 10, 5)
+    v0 = -2
+    v1 = 5
+    v2 = 8
+    bc = ((2, v1),)
+    V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3)
+    assert V == approx([-2, 1.5, 5, 6.5, 8])
+
+
+def test_poisson_1d_bc_mult():
+    X = np.linspace(0, 10, 7)
+    v0 = -2
+    v1 = 5
+    v2 = 8
+    v3 = 20
+    bc = ((2, v1), (4, v2))
+    V = fdm.poisson_1d(X, v_left=v0, v_right=v3, bc=bc, conv=1e-3)
+    assert V == approx([-2, 1.5, 5, 6.5, 8, 14, 20])
+
+
+def test_poisson_1d_bc_compound():
+    X = np.linspace(0, 10, 7)
+    v0 = -2
+    v1 = 5
+    v2 = 8
+    bc = (([2, 3, 4], v1),)
+    V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3)
+    assert V == approx([-2, 1.5, 5, 5, 5, 6.5, 8])

@@ -13,6 +13,7 @@ except ImportError:
 
 def poisson_1d(X: np.ndarray, v_left: float=0, v_right: float=0,
                dielectric: np.ndarray=None, charge: np.ndarray=None,
+               bc: list=None,
                conv: float= 1e-3, Nmax: int=1e5):
     '''One-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument
@@ -36,6 +37,9 @@ def poisson_1d(X: np.ndarray, v_left: float=0, v_right: float=0,
             er1 = dielectric[:-1]
             er2 = dielectric[1:]
             V[1:-1] = (er2 * V[2:] + er1 * V[:-2]) / (er1 + er2)
+        if bc:
+            for bx, bv in bc:
+                V[bx] = bv
         err = np.sum(np.abs(V - V_old))
         if err < conv:
             break
@@ -185,7 +189,20 @@ def example_parallel_plates():
     plt.show()
 
 
+def example_poisson_1d_bc():
+    X = np.linspace(0, 10, 21)
+    v0 = -2
+    v1 = 3
+    v2 = 6
+    bc = (([2, 3, 4], v1),)
+    V = poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3)
+    plt.plot(X, V)
+    plt.grid()
+    plt.show()
+
+
 if __name__ == '__main__':
     example_poisson_1d()
     example_poisson_2d()
     example_parallel_plates()
+    example_poisson_1d_bc()
