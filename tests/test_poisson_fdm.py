@@ -134,11 +134,46 @@ def test_poisson_1d_bc_mult():
     assert V == approx([-2, 1.5, 5, 6.5, 8, 14, 20])
 
 
-def test_poisson_1d_bc_compound():
+def test_poisson_1d_bc_slice():
     X = np.linspace(0, 10, 7)
     v0 = -2
     v1 = 5
     v2 = 8
-    bc = (([2, 3, 4], v1),)
+    bc = ((slice(2, 5), v1),)
     V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3)
     assert V == approx([-2, 1.5, 5, 5, 5, 6.5, 8])
+
+
+def test_poisson_2d_bc():
+    x = np.linspace(0, 1, 5)
+    y = np.linspace(0, 1, 5)
+    X, Y = np.meshgrid(x, y)
+    bc = (((2, 2), 12.0),)
+    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6)
+    assert V == approx(np.array([[0, 0, 0, 0, 0],
+                                 [0, 2, 4, 2, 0],
+                                 [0, 4, 12, 4, 0],
+                                 [0, 2, 4, 2, 0],
+                                 [0, 0, 0, 0, 0]]))
+
+
+def test_poisson_2d_bc_mult():
+    x = np.linspace(0, 1, 5)
+    y = np.linspace(0, 1, 5)
+    X, Y = np.meshgrid(x, y)
+    vbc1 = 13
+    vbc2 = 7
+    bc = (((1, 3), vbc1), ((3, 1), vbc2))
+    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6)
+    assert V[1, 3] == approx(vbc1)
+    assert V[3, 1] == approx(vbc2)
+
+
+def test_poisson_2d_bc_slice():
+    x = np.linspace(0, 1, 5)
+    y = np.linspace(0, 1, 5)
+    X, Y = np.meshgrid(x, y)
+    vbc = 16
+    bc = (((slice(1, 4), 2), vbc),)
+    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6)
+    assert V[1:4, 2] == approx(vbc)

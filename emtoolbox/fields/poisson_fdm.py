@@ -11,7 +11,7 @@ except ImportError:
     EPS0 = 8.854e-12
 
 
-def poisson_1d(X: np.ndarray, v_left: float=0, v_right: float=0,
+def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
                dielectric: np.ndarray=None, charge: np.ndarray=None,
                bc: list=None,
                conv: float= 1e-3, Nmax: int=1e5):
@@ -47,9 +47,10 @@ def poisson_1d(X: np.ndarray, v_left: float=0, v_right: float=0,
     return V
 
 
-def poisson_2d(X: np.ndarray, Y: np.ndarray,
+def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                v_left: float=0, v_right: float=0,
                v_top: float=0, v_bottom: float=0,
+               bc: list=None,
                conv: float= 1e-3, Nmax: int=1e5, charge: np.ndarray=None):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
@@ -73,6 +74,9 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray,
                                 V[1:-1, 2:] + V[1:-1, :-2])
         if charge is not None:
             V[1:-1, 1:-1] -= 0.25 * charge[1:-1, 1:-1]
+        if bc:
+            for bxy, bv in bc:
+                V[bxy] = bv
         err = np.sum(np.abs(V - V_old))
         if err < conv:
             break
