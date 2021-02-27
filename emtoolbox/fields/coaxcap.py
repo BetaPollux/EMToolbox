@@ -47,13 +47,19 @@ class CoaxCapacitor:
         choice = [er for er, *_ in self.sheaths]
         return (X, np.select(cond, choice)[:-1])
 
-    def efield(self, X, Va, Y=None):
+    def efield(self, X, Y=None, /, Va=1):
         '''Get electric field for the specified differential voltage and locations'''
-        if X.min() < self.ri or X.max() > self.ro:
-            raise Exception('Invalid range of X provided')
-        if len(self.sheaths) > 1:
-            raise Exception('Multiple dielectrics not yet supported')
-        return -Va / X / np.log(self.ri / self.ro)
+        if Y is None:
+            R = X
+        else:
+            R = np.sqrt(X**2 + Y**2)
+        condlist = [R < self.ri, R > self.ro]
+        choicelist = [0, 0]
+        D = self.charge(Va) / (2 * np.pi * self.length * R)
+        for er, t, x0 in self.sheaths:
+            condlist.insert(-1, R <= x0 + t)
+            choicelist.insert(-1, D / (er * EPS0))
+        return np.select(condlist, choicelist)
 
     def potential(self, X, Y=None, /, Va=1, Vref=0):
         '''Get potential for the specified differential voltage and locations.
@@ -62,12 +68,14 @@ class CoaxCapacitor:
             R = X
         else:
             R = np.sqrt(X**2 + Y**2)
-        if len(self.sheaths) > 1:
-            raise Exception('Multiple dielectrics not yet supported')
-        condlist = [R < self.ri, R <= self.ro, R > self.ro]
-        choicelist = [Vref + Va,
-                      Vref + Va / np.log(self.ri / self.ro) * np.log(R / self.ro, where=(R>=self.ri)),
-                      Vref]
+        condlist = [R < self.ri, R > self.ro]
+        choicelist = [Vref + Va, Vref]
+        V0 = Vref + Va
+        Qs = self.charge(Va) / (2 * np.pi * self.length)
+        for er, t, x0 in self.sheaths:
+            condlist.insert(-1, R <= x0 + t)
+            choicelist.insert(-1, V0 - Qs / (er * EPS0) * np.log(R / x0, where=R>0))
+            V0 -= Qs / (er * EPS0) * np.log((x0 + t) / x0)
         return np.select(condlist, choicelist)
 
     def charge(self, Va):

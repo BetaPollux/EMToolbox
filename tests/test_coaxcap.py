@@ -144,3 +144,23 @@ def test_capacitance_2layer():
     er2, t2 = 5.0, 2.5e-3
     cc = CoaxCapacitor(ri, (er1, er2), (t1, t2))
     assert cc.capacitance() == approx(695.7e-12)
+
+
+def test_potential_2layer():
+    ri = 8e-3
+    er1, t1 = 6.0, 2e-3
+    er2, t2 = 3.0, 20e-3
+    cc = CoaxCapacitor(ri, (er1, er2), (t1, t2))
+    R = np.array([8e-3, 10e-3, 30e-3])
+    V = cc.potential(R, Va=12500)
+    assert V == approx(np.array([12500, 11347, 0]), abs=1)
+
+
+def test_efield_2layer():
+    ri = 8e-3
+    er1, t1 = 6.0, 2e-3
+    er2, t2 = 3.0, 20e-3
+    cc = CoaxCapacitor(ri, (er1, er2), (t1, t2))
+    R = np.array([8e-3, 10e-3, 10.001e-3, 30e-3])
+    E = cc.efield(R, Va=12500)
+    assert E == approx(np.array([0.6456e6, 0.5165e6, 1.033e6, 0.3443e6]), abs=1e3)
