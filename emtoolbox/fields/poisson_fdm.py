@@ -50,14 +50,17 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
 def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                v_left: float=0, v_right: float=0,
                v_top: float=0, v_bottom: float=0,
+               dielectric: np.ndarray=None, charge: np.ndarray=None,
                bc: list=None,
-               conv: float= 1e-3, Nmax: int=1e5, charge: np.ndarray=None):
+               conv: float= 1e-3, Nmax: int=1e5):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
     if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
         raise Exception('X and Y must have xy indexing')
     if X[0, 1] - X[0, 0] != Y[1, 0] - Y[0, 0]:
         raise Exception('X and Y must have the same spacing')
+    if charge is not None and dielectric is not None:
+        raise Exception('Charge is not support with dielectric')
     V = np.zeros_like(X)
     V[:, 0] = v_left
     V[:, -1] = v_right
@@ -70,10 +73,21 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
     V[1:-1, 1:-1] = 0.25 * (v_bottom + v_right + v_top + v_left)
     for n in range(int(Nmax)):
         V_old = np.copy(V)
-        V[1:-1, 1:-1] = 0.25 * (V[2:, 1:-1] + V[:-2, 1:-1] +
-                                V[1:-1, 2:] + V[1:-1, :-2])
-        if charge is not None:
-            V[1:-1, 1:-1] -= 0.25 * charge[1:-1, 1:-1]
+        if dielectric is None:
+            V[1:-1, 1:-1] = 0.25 * (V[2:, 1:-1] + V[:-2, 1:-1] +
+                                    V[1:-1, 2:] + V[1:-1, :-2])
+            if charge is not None:
+                V[1:-1, 1:-1] -= 0.25 * charge[1:-1, 1:-1]
+        else:
+            er_nw = dielectric[1:, :-1]
+            er_ne = dielectric[1:, 1:]
+            er_sw = dielectric[:-1, :-1]
+            er_se = dielectric[:-1:, 1:]
+            V[1:-1, 1:-1] = (((er_sw + er_nw) * V[1:-1, :-2] +
+                              (er_nw + er_ne) * V[2:, 1:-1] +
+                              (er_ne + er_se) * V[1:-1, 2:] +
+                              (er_se + er_sw) * V[:-2, 1:-1]) /
+                              (2 * (er_nw + er_ne + er_sw + er_se)))
         if bc:
             for bxy, bv in bc:
                 V[bxy] = bv
@@ -205,8 +219,28 @@ def example_poisson_1d_bc():
     plt.show()
 
 
+def example_poisson_2d_coax():
+    ri = 1.5e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    N = 101
+    Va = 10.0
+    x = np.linspace(-w, w, N)
+    y = np.linspace(-w, w, N)
+    X, Y = np.meshgrid(x, y)
+    R = np.sqrt(X**2 + Y**2)
+    bc = ((R <= ri, Va), (R >= ro, 0))
+    V = poisson_2d(X, Y, bc=bc)
+    _, ax = plt.subplots()
+    ax.contour(X, Y, V)
+    ax.set_aspect('equal')
+    ax.grid()
+    plt.show()
+
+
 if __name__ == '__main__':
     example_poisson_1d()
     example_poisson_2d()
     example_parallel_plates()
     example_poisson_1d_bc()
+    example_poisson_2d_coax()

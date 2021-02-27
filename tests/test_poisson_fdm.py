@@ -67,16 +67,16 @@ def test_poisson_2d():
 
 
 def test_poisson_2d_indexing():
-    x = np.linspace(0, 2.0, 101)
-    y = np.linspace(0, 1.0, 51)
+    x = np.linspace(0, 2.0, 21)
+    y = np.linspace(0, 1.0, 11)
     X, Y = np.meshgrid(x, y, indexing='ij')
     with pytest.raises(Exception):
         fdm.poisson_2d(X, Y)
 
 
 def test_poisson_2d_spacing():
-    x = np.linspace(0, 2.0, 101)
-    y = np.linspace(0, 2.0, 51)
+    x = np.linspace(0, 2.0, 21)
+    y = np.linspace(0, 2.0, 11)
     X, Y = np.meshgrid(x, y)
     with pytest.raises(Exception):
         fdm.poisson_2d(X, Y)
@@ -177,3 +177,33 @@ def test_poisson_2d_bc_slice():
     bc = (((slice(1, 4), 2), vbc),)
     V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6)
     assert V[1:4, 2] == approx(vbc)
+
+
+def test_poisson_2d_coax():
+    ri = 2.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    N = 101
+    Va = 10.0
+    x = np.linspace(-w, w, N)
+    y = np.linspace(-w, w, N)
+    X, Y = np.meshgrid(x, y)
+    R = np.sqrt(X**2 + Y**2)
+    bc = ((R < ri, Va), (R > ro, 0))
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    expected = cc.potential(X, Y, Va=Va)
+    potential = fdm.poisson_2d(X, Y, bc=bc, conv=1e-3)
+    assert potential == approx(expected, abs=0.4)
+
+
+def test_poisson_2d_dielectric():
+    w = 2.0
+    h = 1.0
+    x = np.linspace(0, w, 41)
+    y = np.linspace(0, h, 21)
+    X, Y = np.meshgrid(x, y)
+    bc = {'v_top': 10, 'v_left': 5, 'v_right': -2, 'v_bottom': -4}
+    er = np.ones_like(X)[:-1, :-1]
+    V1 = fdm.poisson_2d(X, Y, **bc, conv=1e-3)
+    V2 = fdm.poisson_2d(X, Y, **bc, dielectric=er, conv=1e-3)
+    assert V1 == approx(V2)
