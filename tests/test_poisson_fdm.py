@@ -111,7 +111,7 @@ def test_gauss_1d_coax():
     # Result is negative due to direction of X
     Q = np.array([-2*np.pi*X[i]*fdm.gauss_1d(X, V, er, i) for i in range(1, len(X) - 1)])
     Qa = cc.charge(v1)
-    assert Q == approx(Qa, abs=1e-11)
+    assert Q == approx(Qa, rel=0.01)
 
 def test_poisson_1d_bc():
     X = np.linspace(0, 10, 5)
@@ -207,3 +207,22 @@ def test_poisson_2d_dielectric():
     V1 = fdm.poisson_2d(X, Y, **bc, conv=1e-3)
     V2 = fdm.poisson_2d(X, Y, **bc, dielectric=er, conv=1e-3)
     assert V1 == approx(V2)
+
+
+def test_gauss_2d_coax():
+    ri = 1.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    N = 101
+    Va = 10.0
+    x = np.linspace(-w, w, N)
+    y = np.linspace(-w, w, N)
+    X, Y = np.meshgrid(x, y)
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    V = cc.potential(X, Y, Va=Va)
+    expected = cc.charge(Va)
+    er = np.ones_like(V)[:-1, :-1]
+    xi1, xi2 = int(N / 5), int(4 * N / 5)
+    yi1, yi2 = int(N / 5), int(4 * N / 5)
+    gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
+    assert gauss == approx(expected, rel=0.02)

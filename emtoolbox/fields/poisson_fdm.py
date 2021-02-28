@@ -107,6 +107,30 @@ def gauss_1d(X: np.ndarray, V: np.ndarray, er: np.ndarray, i: int):
                    (er[i-1] - er[i]) * V[i]) / dx
 
 
+def gauss_2d(X: np.ndarray, Y: np.ndarray, V: np.ndarray, er: np.ndarray,
+             xi1: int, xi2: int, yi1: int, yi2: int):
+    '''Two-dimensional Gauss' law, returning enclosed charge
+    Evaluated along closed rectangle defined by corners:
+        Bottom-left (xi1, yi1) to top-right (xi2, yi2)
+    Note: charge polarity is positive for V increasing with X or Y'''
+    if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
+        raise Exception('X and Y must have xy indexing')
+    if X[0, 1] - X[0, 0] != Y[1, 0] - Y[0, 0]:
+        raise Exception('X and Y must have the same spacing')
+    qe = 0
+    # Top and bottom edges; dV/dy and -dV/dy, 0.5 is due to central-difference
+    for yi, k in zip((yi1, yi2), (0.5, -0.5)):
+        for xi in range(xi1, xi2+1):
+            qe += k * (er[yi, xi] * V[yi+1, xi] - er[yi-1, xi] * V[yi-1, xi] + 
+                       (er[yi-1, xi] - er[yi, xi]) * V[yi, xi])
+    # Left and right edges; dV/dx and -dV/dx, 0.5 is due to central-difference
+    for xi, k in zip((xi1, xi2), (0.5, -0.5)):
+        for yi in range(yi1, yi2+1):
+            qe += k * (er[yi, xi] * V[yi, xi+1] - er[yi, xi-1] * V[yi, xi-1] + 
+                       (er[yi, xi-1] - er[yi, xi]) * V[yi, xi])
+    return EPS0 * qe
+
+
 def trough_analytical(X: np.ndarray, Y: np.ndarray,
                       v_left: float=0, v_right: float=0,
                       v_top: float=0, v_bottom: float=0):
