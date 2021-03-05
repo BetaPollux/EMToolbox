@@ -28,7 +28,7 @@ def test_poisson_1d():
     X, _ = pp.get_arrays(101)
     v0 = -2
     v1 = 5
-    V = fdm.poisson_1d(X, v_left=v0, v_right=v1, conv=1e-3)
+    V = fdm.poisson_1d(X, v_left=v0, v_right=v1, conv=1e-5)
     Va = pp.potential(X, v1 - v0, v0)
     assert V == approx(Va, abs=0.01)
 
@@ -38,7 +38,7 @@ def test_poisson_1d_dielectric():
     v0 = 0
     v1 = 200
     X, er = pp.get_arrays(101)
-    V = fdm.poisson_1d(X, dielectric=er, v_left=v0, v_right=v1, conv=1e-4)
+    V = fdm.poisson_1d(X, dielectric=er, v_left=v0, v_right=v1, conv=1e-7)
     Va = pp.potential(X, v1 - v0, v0)
     assert V == approx(Va, abs=0.01)
 
@@ -48,7 +48,7 @@ def test_poisson_1d_dielectric2():
     v0 = 0
     v1 = 200
     X, er = pp.get_arrays(101)
-    V = fdm.poisson_1d(X, dielectric=er, v_left=v0, v_right=v1, conv=1e-4)
+    V = fdm.poisson_1d(X, dielectric=er, v_left=v0, v_right=v1, conv=1e-7)
     Va = pp.potential(X, v1 - v0, v0)
     assert V == approx(Va, abs=0.01)
 
@@ -114,33 +114,39 @@ def test_gauss_1d_coax():
     assert Q == approx(Qa, rel=0.01)
 
 def test_poisson_1d_bc():
-    X = np.linspace(0, 10, 5)
-    v0 = -2
-    v1 = 5
-    v2 = 8
-    bc = ((2, v1),)
-    V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3)
+    X = np.array([0.0, 2.0, 4.0, 6.0, 8.0])
+    v0 = -2.0
+    v1 = 5.0
+    v2 = 8.0
+    bc_bool = (X == 4)
+    bc_val = bc_bool * v1
+    bc = (bc_bool, bc_val)
+    V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3, sor=1)
     assert V == approx([-2, 1.5, 5, 6.5, 8])
 
 
 def test_poisson_1d_bc_mult():
-    X = np.linspace(0, 10, 7)
-    v0 = -2
-    v1 = 5
-    v2 = 8
-    v3 = 20
-    bc = ((2, v1), (4, v2))
-    V = fdm.poisson_1d(X, v_left=v0, v_right=v3, bc=bc, conv=1e-3)
+    X = np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0])
+    v0 = -2.0
+    v1 = 5.0
+    v2 = 8.0
+    v3 = 20.0
+    bc_bool = np.logical_or(X == 4, X == 8)
+    bc_val = (X == 4) * v1 + (X == 8) * v2
+    bc = (bc_bool, bc_val)
+    V = fdm.poisson_1d(X, v_left=v0, v_right=v3, bc=bc, conv=1e-3, sor=1)
     assert V == approx([-2, 1.5, 5, 6.5, 8, 14, 20])
 
 
 def test_poisson_1d_bc_slice():
-    X = np.linspace(0, 10, 7)
-    v0 = -2
-    v1 = 5
-    v2 = 8
-    bc = ((slice(2, 5), v1),)
-    V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3)
+    X = np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0])
+    v0 = -2.0
+    v1 = 5.0
+    v2 = 8.0
+    bc_bool = np.logical_and(X >= 4, X <= 8)
+    bc_val = bc_bool * v1
+    bc = (bc_bool, bc_val)
+    V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3, sor=1)
     assert V == approx([-2, 1.5, 5, 5, 5, 6.5, 8])
 
 
