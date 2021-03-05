@@ -65,13 +65,13 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                v_left: float=0, v_right: float=0,
                v_top: float=0, v_bottom: float=0,
                dielectric: np.ndarray=None, charge: np.ndarray=None,
-               bc: list=None, sor=1.8,
+               bc: list=None, sor=1.8, xsym: bool=False, ysym: bool=False,
                conv: float= 1e-3, Nmax: int=1e5):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
     if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
         raise Exception('X and Y must have xy indexing')
-    if X[0, 1] - X[0, 0] != Y[1, 0] - Y[0, 0]:
+    if abs(abs(X[0, 1] - X[0, 0]) - abs(Y[1, 0] - Y[0, 0])) > 1e-6:
         raise Exception('X and Y must have the same spacing')
     if charge is not None:
         raise Exception('Charge is currently not supported')
@@ -100,6 +100,14 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
     for n in range(int(Nmax)):
         Vsum = 0
         Verr = 0
+        if xsym:
+            for j in range(1, ny-1):
+                if not bc or not bc_bool[j, 0]:
+                    V[j, 0] = 0.25 * (V[j+1, 0] + V[j-1, 0] + 2*V[j, 1])
+        if ysym:
+            for i in range(1, nx-1):
+                if not bc or not bc_bool[0, i]:
+                    V[0, i] = 0.25 * (V[0, i+1] + V[0, i-1] + 2*V[1, i])
         for j in range(1, ny-1):
             for i in range(1, nx-1):
                 V_old = V[j, i]

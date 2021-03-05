@@ -248,3 +248,60 @@ def test_gauss_2d_coax():
     yi1, yi2 = int(N / 5), int(4 * N / 5)
     gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
     assert gauss == approx(expected, rel=0.02)
+
+
+def test_poisson_2d_coax_xsym():
+    ri = 2.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    dx = ri / 40
+    Va = 10.0
+    x = np.arange(0, w, dx)
+    y = np.arange(-w, w, dx)
+    X, Y = np.meshgrid(x, y)
+    R = np.sqrt(X**2 + Y**2)
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    expected = cc.potential(X, Y, Va=Va)
+    potential = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6, xsym=True)
+    assert potential == approx(expected, abs=0.4)
+
+
+def test_poisson_2d_coax_ysym():
+    ri = 2.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    dx = ri / 40
+    Va = 10.0
+    x = np.arange(-w, w, dx)
+    y = np.arange(0, w, dx)
+    X, Y = np.meshgrid(x, y)
+    R = np.sqrt(X**2 + Y**2)
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    expected = cc.potential(X, Y, Va=Va)
+    potential = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6, ysym=True)
+    assert potential == approx(expected, abs=0.4)
+
+
+def test_poisson_2d_coax_xysym():
+    ri = 2.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    dx = ri / 40
+    Va = 10.0
+    x = np.arange(0, w, dx)
+    y = np.arange(0, w, dx)
+    X, Y = np.meshgrid(x, y)
+    R = np.sqrt(X**2 + Y**2)
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    expected = cc.potential(X, Y, Va=Va)
+    potential = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6, xsym=True, ysym=True)
+    assert potential == approx(expected, abs=0.4)
