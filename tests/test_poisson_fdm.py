@@ -60,7 +60,7 @@ def test_poisson_2d():
     y = np.linspace(0, h, 51)
     X, Y = np.meshgrid(x, y)
     bc = {'v_top': 10, 'v_left': 5, 'v_right': -2, 'v_bottom': -4}
-    V = fdm.poisson_2d(X, Y, **bc, conv=1e-3)
+    V = fdm.poisson_2d(X, Y, **bc, conv=1e-5)
     Va = fdm.trough_analytical(X, Y, **bc)
     # Exclude boundaries due to analytical error at corners
     assert V[1:-1, 1:-1] == approx(Va[1:-1, 1:-1], abs=0.1)  
@@ -114,37 +114,41 @@ def test_gauss_1d_coax():
     assert Q == approx(Qa, rel=0.01)
 
 def test_poisson_1d_bc():
-    X = np.array([0.0, 2.0, 4.0, 6.0, 8.0])
+    X = np.linspace(0, 5, 5)
     v0 = -2.0
     v1 = 5.0
     v2 = 8.0
-    bc_bool = (X == 4)
-    bc_val = bc_bool * v1
+    bc_val = np.zeros_like(X)
+    bc_val[2] = v1
+    bc_bool = bc_val > 0
     bc = (bc_bool, bc_val)
     V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3, sor=1)
     assert V == approx([-2, 1.5, 5, 6.5, 8])
 
 
 def test_poisson_1d_bc_mult():
-    X = np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0])
+    X = np.linspace(0, 5, 7)
     v0 = -2.0
     v1 = 5.0
     v2 = 8.0
     v3 = 20.0
-    bc_bool = np.logical_or(X == 4, X == 8)
-    bc_val = (X == 4) * v1 + (X == 8) * v2
+    bc_val = np.zeros_like(X)
+    bc_val[2] = v1
+    bc_val[4] = v2
+    bc_bool = bc_val > 0
     bc = (bc_bool, bc_val)
     V = fdm.poisson_1d(X, v_left=v0, v_right=v3, bc=bc, conv=1e-3, sor=1)
     assert V == approx([-2, 1.5, 5, 6.5, 8, 14, 20])
 
 
 def test_poisson_1d_bc_slice():
-    X = np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0])
+    X = np.linspace(0, 5, 7)
     v0 = -2.0
     v1 = 5.0
     v2 = 8.0
-    bc_bool = np.logical_and(X >= 4, X <= 8)
-    bc_val = bc_bool * v1
+    bc_val = np.zeros_like(X)
+    bc_val[2:5] = v1
+    bc_bool = bc_val > 0
     bc = (bc_bool, bc_val)
     V = fdm.poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3, sor=1)
     assert V == approx([-2, 1.5, 5, 5, 5, 6.5, 8])
@@ -154,8 +158,11 @@ def test_poisson_2d_bc():
     x = np.linspace(0, 1, 5)
     y = np.linspace(0, 1, 5)
     X, Y = np.meshgrid(x, y)
-    bc = (((2, 2), 12.0),)
-    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6)
+    bc_val = np.zeros_like(X)
+    bc_val[2, 2] = 12.0
+    bc_bool = bc_val > 0
+    bc = (bc_bool, bc_val)
+    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6, sor=1)
     assert V == approx(np.array([[0, 0, 0, 0, 0],
                                  [0, 2, 4, 2, 0],
                                  [0, 4, 12, 4, 0],
@@ -169,8 +176,12 @@ def test_poisson_2d_bc_mult():
     X, Y = np.meshgrid(x, y)
     vbc1 = 13
     vbc2 = 7
-    bc = (((1, 3), vbc1), ((3, 1), vbc2))
-    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6)
+    bc_val = np.zeros_like(X)
+    bc_val[1, 3] = vbc1
+    bc_val[3, 1] = vbc2
+    bc_bool = bc_val > 0
+    bc = (bc_bool, bc_val)
+    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6, sor=1)
     assert V[1, 3] == approx(vbc1)
     assert V[3, 1] == approx(vbc2)
 
@@ -180,8 +191,11 @@ def test_poisson_2d_bc_slice():
     y = np.linspace(0, 1, 5)
     X, Y = np.meshgrid(x, y)
     vbc = 16
-    bc = (((slice(1, 4), 2), vbc),)
-    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6)
+    bc_val = np.zeros_like(X)
+    bc_val[1:4, 2] = vbc
+    bc_bool = bc_val > 0
+    bc = (bc_bool, bc_val)
+    V = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6, sor=1)
     assert V[1:4, 2] == approx(vbc)
 
 
@@ -195,10 +209,12 @@ def test_poisson_2d_coax():
     y = np.linspace(-w, w, N)
     X, Y = np.meshgrid(x, y)
     R = np.sqrt(X**2 + Y**2)
-    bc = ((R < ri, Va), (R > ro, 0))
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
     cc = CoaxCapacitor(ri, 1.0, ro - ri)
     expected = cc.potential(X, Y, Va=Va)
-    potential = fdm.poisson_2d(X, Y, bc=bc, conv=1e-3)
+    potential = fdm.poisson_2d(X, Y, bc=bc, conv=1e-5)
     assert potential == approx(expected, abs=0.4)
 
 

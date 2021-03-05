@@ -25,7 +25,8 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
     Where the condition is X[bool] = value'''
     if charge is not None:
         raise Exception('Charge is currently not supported')
-    V = np.zeros_like(X)
+    # TODO enforce array types
+    V = np.zeros_like(X, dtype='float64')
     V[0] = v_left
     V[-1] = v_right
     V[1:-1] = 0.5 * (v_left + v_right)  # Initial seed
@@ -34,7 +35,6 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
         bc_bool = np.array([False])
         bc_val = np.array([0.0])
     else:
-        # TODO numba requires float64 array
         bc_bool, bc_val = bc
     for n in range(int(Nmax)):
         Vsum = 0
@@ -53,17 +53,18 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
                 V[i] = R * sor + V_old
                 Verr += abs(R)
                 Vsum += abs(V[i])
-        if Verr / Vsum < conv:
+        if Vsum > 0 and Verr / Vsum < conv:
             break
     print('1D Error', Verr / Vsum, 'after', n+1, 'iterations')
     return V
 
 
+@jit(nopython=True)
 def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                v_left: float=0, v_right: float=0,
                v_top: float=0, v_bottom: float=0,
                dielectric: np.ndarray=None, charge: np.ndarray=None,
-               bc: list=None,
+               bc: list=None, sor=1.8,
                conv: float= 1e-3, Nmax: int=1e5):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
@@ -71,9 +72,10 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
         raise Exception('X and Y must have xy indexing')
     if X[0, 1] - X[0, 0] != Y[1, 0] - Y[0, 0]:
         raise Exception('X and Y must have the same spacing')
-    if charge is not None and dielectric is not None:
-        raise Exception('Charge is not support with dielectric')
-    V = np.zeros_like(X)
+    if charge is not None:
+        raise Exception('Charge is currently not supported')
+    # TODO enforce array types
+    V = np.zeros_like(X, dtype='float64')
     V[:, 0] = v_left
     V[:, -1] = v_right
     V[-1, :] = v_top
@@ -83,30 +85,41 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
     V[-1, 0] = 0.5 * (v_top + v_left)
     V[-1, -1] = 0.5 * (v_top + v_right)
     V[1:-1, 1:-1] = 0.25 * (v_bottom + v_right + v_top + v_left)
+    nx = X.shape[1]
+    ny = X.shape[0]
+    if bc is None:
+        bc_bool = np.array([[False], [False]])
+        bc_val = np.array([[0.0], [0.0]])
+    else:
+        bc_bool, bc_val = bc
     for n in range(int(Nmax)):
-        V_old = np.copy(V)
-        if dielectric is None:
-            V[1:-1, 1:-1] = 0.25 * (V[2:, 1:-1] + V[:-2, 1:-1] +
-                                    V[1:-1, 2:] + V[1:-1, :-2])
-            if charge is not None:
-                V[1:-1, 1:-1] -= 0.25 * charge[1:-1, 1:-1]
-        else:
-            er_nw = dielectric[1:, :-1]
-            er_ne = dielectric[1:, 1:]
-            er_sw = dielectric[:-1, :-1]
-            er_se = dielectric[:-1:, 1:]
-            V[1:-1, 1:-1] = (((er_sw + er_nw) * V[1:-1, :-2] +
-                              (er_nw + er_ne) * V[2:, 1:-1] +
-                              (er_ne + er_se) * V[1:-1, 2:] +
-                              (er_se + er_sw) * V[:-2, 1:-1]) /
-                              (2 * (er_nw + er_ne + er_sw + er_se)))
-        if bc:
-            for bxy, bv in bc:
-                V[bxy] = bv
-        err = np.sum(np.abs(V - V_old))
-        if err < conv:
+        Vsum = 0
+        Verr = 0
+        for j in range(1, ny-1):
+            for i in range(1, nx-1):
+                V_old = V[j, i]
+                if bc and bc_bool[j, i]:
+                    V[j, i] = bc_val[j, i]
+                else:
+                    if dielectric is None:
+                        R = 0.25 * (V[j+1, i] + V[j-1, i] +
+                                    V[j, i+1] + V[j, i-1]) - V_old
+                    else:
+                        er_nw = dielectric[j+1, i]
+                        er_ne = dielectric[j+1, i+1]
+                        er_sw = dielectric[j, i]
+                        er_se = dielectric[j, i+1]
+                        R = (((er_sw + er_nw) * V[j, i-1] +
+                              (er_nw + er_ne) * V[j+1, i] +
+                              (er_ne + er_se) * V[j, i+1] +
+                              (er_se + er_sw) * V[j-1, i]) /
+                             (2 * (er_nw + er_ne + er_sw + er_se))) - V_old
+                    V[j, i] = R * sor + V_old
+                    Verr += abs(R)
+                    Vsum += abs(V[j, i])
+        if Vsum > 0 and Verr / Vsum < conv:
             break
-    print(f'2D Error {err:.3e} after {n+1} iterations')
+    print('2D Error', Verr / Vsum, 'after', n+1, 'iterations')
     return V
 
 
