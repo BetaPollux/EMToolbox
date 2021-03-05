@@ -36,14 +36,15 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
         bc_val = np.array([0.0])
     else:
         bc_bool, bc_val = bc
+        for i in range(nx):
+            if bc_bool[i]:
+                V[i] = bc_val[i]
     for n in range(int(Nmax)):
         Vsum = 0
         Verr = 0
         for i in range(1, nx-1):
             V_old = V[i]
-            if bc and bc_bool[i]:
-                V[i] = bc_val[i]
-            else:
+            if not bc or not bc_bool[i]:
                 if dielectric is None:
                     R = 0.5 * (V[i+1] + V[i-1]) - V_old
                 else:
@@ -92,15 +93,17 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
         bc_val = np.array([[0.0], [0.0]])
     else:
         bc_bool, bc_val = bc
+        for j in range(ny):
+            for i in range(nx):
+                if bc_bool[j, i]:
+                    V[j, i] = bc_val[j, i]
     for n in range(int(Nmax)):
         Vsum = 0
         Verr = 0
         for j in range(1, ny-1):
             for i in range(1, nx-1):
                 V_old = V[j, i]
-                if bc and bc_bool[j, i]:
-                    V[j, i] = bc_val[j, i]
-                else:
+                if not bc or not bc_bool[j, i]:
                     if dielectric is None:
                         R = 0.25 * (V[j+1, i] + V[j-1, i] +
                                     V[j, i+1] + V[j, i-1]) - V_old
