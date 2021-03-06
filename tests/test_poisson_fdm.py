@@ -234,18 +234,22 @@ def test_poisson_2d_dielectric():
 def test_gauss_2d_coax():
     ri = 1.0e-3
     ro = 4.0e-3
+    rm = 0.5 * (ri + ro)
+    assert rm * 1.414 < ro
     w = 1.1 * ro
-    N = 101
+    dx = ri / 40
     Va = 10.0
-    x = np.linspace(-w, w, N)
-    y = np.linspace(-w, w, N)
+    x = np.arange(0, w, dx)
+    y = np.arange(-w, w, dx)
     X, Y = np.meshgrid(x, y)
     cc = CoaxCapacitor(ri, 1.0, ro - ri)
     V = cc.potential(X, Y, Va=Va)
     expected = cc.charge(Va)
     er = np.ones_like(V)[:-1, :-1]
-    xi1, xi2 = int(N / 5), int(4 * N / 5)
-    yi1, yi2 = int(N / 5), int(4 * N / 5)
+    xi1 = np.searchsorted(x, -rm)
+    xi2 = np.searchsorted(x, rm)
+    yi1 = np.searchsorted(y, -rm)
+    yi2 = np.searchsorted(y, rm)
     gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
     assert gauss == approx(expected, rel=0.02)
 
@@ -305,3 +309,72 @@ def test_poisson_2d_coax_xysym():
     expected = cc.potential(X, Y, Va=Va)
     potential = fdm.poisson_2d(X, Y, bc=bc, conv=1e-6, xsym=True, ysym=True)
     assert potential == approx(expected, abs=0.4)
+
+
+def test_gauss_2d_coax_xsym():
+    ri = 1.0e-3
+    ro = 4.0e-3
+    rm = 0.5 * (ri + ro)
+    assert rm * 1.414 < ro
+    w = 1.1 * ro
+    dx = ri / 40
+    Va = 10.0
+    x = np.arange(0, w, dx)
+    y = np.arange(-w, w, dx)
+    X, Y = np.meshgrid(x, y)
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    V = cc.potential(X, Y, Va=Va)
+    expected = cc.charge(Va)
+    er = np.ones_like(V)[:-1, :-1]
+    xi1 = 0
+    xi2 = np.searchsorted(x, rm)
+    yi1 = np.searchsorted(y, -rm)
+    yi2 = np.searchsorted(y, rm)
+    gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
+    assert gauss == approx(expected, rel=0.02)
+
+
+def test_gauss_2d_coax_ysym():
+    ri = 1.0e-3
+    ro = 4.0e-3
+    rm = 0.5 * (ri + ro)
+    assert rm * 1.414 < ro
+    w = 1.1 * ro
+    dx = ri / 40
+    Va = 10.0
+    x = np.arange(-w, w, dx)
+    y = np.arange(0, w, dx)
+    X, Y = np.meshgrid(x, y)
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    V = cc.potential(X, Y, Va=Va)
+    expected = cc.charge(Va)
+    er = np.ones_like(V)[:-1, :-1]
+    xi1 = np.searchsorted(x, -rm)
+    xi2 = np.searchsorted(x, rm)
+    yi1 = 0
+    yi2 = np.searchsorted(y, rm)
+    gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
+    assert gauss == approx(expected, rel=0.02)
+
+
+def test_gauss_2d_coax_xysym():
+    ri = 1.0e-3
+    ro = 4.0e-3
+    rm = 0.5 * (ri + ro)
+    assert rm * 1.414 < ro
+    w = 1.1 * ro
+    dx = ri / 40
+    Va = 10.0
+    x = np.arange(0, w, dx)
+    y = np.arange(0, w, dx)
+    X, Y = np.meshgrid(x, y)
+    cc = CoaxCapacitor(ri, 1.0, ro - ri)
+    V = cc.potential(X, Y, Va=Va)
+    expected = cc.charge(Va)
+    er = np.ones_like(V)[:-1, :-1]
+    xi1 = 0
+    xi2 = np.searchsorted(x, rm)
+    yi1 = 0
+    yi2 = np.searchsorted(y, rm)
+    gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
+    assert gauss == approx(expected, rel=0.02)

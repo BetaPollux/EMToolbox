@@ -15,7 +15,7 @@ except ImportError:
 def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
                dielectric: np.ndarray=None, charge: np.ndarray=None,
                bc: list=None, sor=1.8,
-               conv: float= 1e-3, Nmax: int=1e5):
+               conv: float= 1e-5, Nmax: int=1e5):
     '''One-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument
     Dielectric is an array of relative permittivity, located at half-grid points
@@ -66,7 +66,7 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                v_top: float=0, v_bottom: float=0,
                dielectric: np.ndarray=None, charge: np.ndarray=None,
                bc: list=None, sor=1.8, xsym: bool=False, ysym: bool=False,
-               conv: float= 1e-3, Nmax: int=1e5):
+               conv: float= 1e-5, Nmax: int=1e5):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
     if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
@@ -148,22 +148,37 @@ def gauss_2d(X: np.ndarray, Y: np.ndarray, V: np.ndarray, er: np.ndarray,
     '''Two-dimensional Gauss' law, returning enclosed charge
     Evaluated along closed rectangle defined by corners:
         Bottom-left (xi1, yi1) to top-right (xi2, yi2)
+    Setting xi1 to 0 implies x-symmetry, and yi0 implies y-symmetry
+    In this case, the left-edge and the bottom-edge are omitted, respectively,
+    with the result multiplied by 2 or 4, as appropriate
     Note: charge polarity is positive for V increasing with X or Y'''
     if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
         raise Exception('X and Y must have xy indexing')
-    if X[0, 1] - X[0, 0] != Y[1, 0] - Y[0, 0]:
+    if abs(abs(X[0, 1] - X[0, 0]) - abs(Y[1, 0] - Y[0, 0])) > 1e-6:
         raise Exception('X and Y must have the same spacing')
     qe = 0
     # Top and bottom edges; dV/dy and -dV/dy, 0.5 is due to central-difference
-    for yi, k in zip((yi1, yi2), (0.5, -0.5)):
+    if yi1 == 0:
+        h_edges = [(yi2, -0.5)]
+    else:
+        h_edges = zip((yi1, yi2), (0.5, -0.5))
+    for yi, k in h_edges:
         for xi in range(xi1, xi2+1):
             qe += k * (er[yi, xi] * V[yi+1, xi] - er[yi-1, xi] * V[yi-1, xi] + 
                        (er[yi-1, xi] - er[yi, xi]) * V[yi, xi])
     # Left and right edges; dV/dx and -dV/dx, 0.5 is due to central-difference
-    for xi, k in zip((xi1, xi2), (0.5, -0.5)):
+    if xi1 == 0:
+        v_edges = [(xi2, -0.5)]
+    else:
+        v_edges = zip((xi1, xi2), (0.5, -0.5))
+    for xi, k in v_edges:
         for yi in range(yi1, yi2+1):
             qe += k * (er[yi, xi] * V[yi, xi+1] - er[yi, xi-1] * V[yi, xi-1] + 
                        (er[yi, xi-1] - er[yi, xi]) * V[yi, xi])
+    if xi1 == 0:
+        qe = 2 * qe # TODO Do not double count point on x-axis
+    if yi1 == 0:
+        qe = 2 * qe # TODO Do not double count point on y-axis
     return EPS0 * qe
 
 
@@ -180,33 +195,6 @@ def trough_analytical(X: np.ndarray, Y: np.ndarray,
         vy = v_top * np.sinh(n * np.pi * Y / a) + v_bottom * np.sinh(n * np.pi / a * (b - Y))
         V += k1 * vx + k2 * vy
     return V
-
-
-def example_poisson_1d():
-    def dist(x, a0, m, std):
-        return a0 * np.exp(-0.5 * ((x - m) / std) ** 2)
-
-    w = 1.0
-    x = np.linspace(0, w, 100)
-    v_left = -2
-    v_right = 1
-    qp = dist(x, 0.01, 0.25 * w, 0.02 * w)
-    qn = dist(x, -0.02, 0.75 * w, 0.05 * w)
-    Q = (None, qp, qp + qn)
-
-    fig, axes = plt.subplots(len(Q), 1, sharex=True)
-    fig.suptitle(f'Finite Difference Method (1D)\n')
-    for i, Qi in enumerate(Q):
-        V = poisson_1d(x, v_left, v_right, charge=Qi)
-        axes[i].plot(x, V, color='b')
-        if Qi is not None:
-            q_axis = axes[i].twinx()
-            q_axis.plot(x, Qi, lw=0.5, color='r')
-            q_axis.set_ylabel(r'$\rho$ / $\epsilon$', color='red')
-        axes[i].set_ylabel('Potential (V)', color='b')
-        axes[i].yaxis.set_major_locator(mpl.ticker.MultipleLocator(1))
-    axes[-1].set_xlim([0, w])
-    plt.show()
 
 
 def example_poisson_2d():
@@ -267,30 +255,20 @@ def example_parallel_plates():
     plt.show()
 
 
-def example_poisson_1d_bc():
-    X = np.linspace(0, 10, 21)
-    v0 = -2
-    v1 = 3
-    v2 = 6
-    bc = (([2, 3, 4], v1),)
-    V = poisson_1d(X, v_left=v0, v_right=v2, bc=bc, conv=1e-3)
-    plt.plot(X, V)
-    plt.grid()
-    plt.show()
-
-
 def example_poisson_2d_coax():
-    ri = 1.5e-3
+    ri = 2.0e-3
     ro = 4.0e-3
     w = 1.1 * ro
-    N = 101
+    dx = ri / 40
     Va = 10.0
-    x = np.linspace(-w, w, N)
-    y = np.linspace(-w, w, N)
+    x = np.arange(0, w, dx)
+    y = np.arange(-w, w, dx)
     X, Y = np.meshgrid(x, y)
     R = np.sqrt(X**2 + Y**2)
-    bc = ((R <= ri, Va), (R >= ro, 0))
-    V = poisson_2d(X, Y, bc=bc)
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    V = poisson_2d(X, Y, bc=bc, xsym=True)
     _, ax = plt.subplots()
     ax.contour(X, Y, V)
     ax.set_aspect('equal')
@@ -299,7 +277,6 @@ def example_poisson_2d_coax():
 
 
 if __name__ == '__main__':
-    example_poisson_1d()
     example_poisson_2d()
     example_parallel_plates()
     example_poisson_1d_bc()
