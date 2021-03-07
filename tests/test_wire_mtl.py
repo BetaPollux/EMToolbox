@@ -124,3 +124,51 @@ def test_two_wire_inductance_diagonal():
     pair = mtl.WireMtl(wires)
     L = mtl.wire_inductance(s, rw)
     assert pair.inductance()[0] == approx(L)
+
+
+def test_two_wire_capacitance_bad_method():
+    rw = 1e-3
+    s = 10e-3
+    wires = [(-0.5 * s, 0, rw), (0.5 * s, 0, rw)]
+    pair = mtl.WireMtl(wires)
+    with pytest.raises(Exception):
+        pair.capacitance(method='junk')
+
+
+def test_two_wire_capacitance_fdm():
+    rw = 1e-3
+    s = 8e-3
+    wires = [(-0.5 * s, 0, rw), (0.5 * s, 0, rw)]
+    pair = mtl.WireMtl(wires)
+    C = pair.capacitance(method='ana')
+    assert pair.capacitance(method='fdm') == approx(C, abs=0.5e-12)
+
+
+def test_two_wire_capacitance_fdm_diagonal():
+    rw = 1e-3
+    x2 = y2 = 6e-3
+    wires = [(0, 0, rw), (x2, y2, rw)]
+    pair = mtl.WireMtl(wires)
+    C = pair.capacitance(method='ana')
+    assert pair.capacitance(method='fdm') == approx(C, abs=0.5e-12)
+
+
+@pytest.mark.xfail(strict=True)  # TODO correct implementation
+def test_two_wire_capacitance_fdm_near():
+    rw = 1e-3
+    s = 3e-3
+    wires = [(-0.5 * s, 0, rw), (0.5 * s, 0, rw)]
+    pair = mtl.WireMtl(wires)
+    C = pair.capacitance(method='ana')
+    assert pair.capacitance(method='fdm') == approx(C, abs=0.5e-12)
+
+
+@pytest.mark.xfail(strict=True)  # TODO correct implementation
+def test_two_wire_capacitance_fdm_rw2():
+    rw1 = 1e-3
+    rw2 = 2e-3
+    s = 20e-3
+    wires = [(-0.5 * s, 0, rw1), (0.5 * s, 0, rw2)]
+    pair = mtl.WireMtl(wires)
+    C = pair.capacitance(method='ana')
+    assert pair.capacitance(method='fdm') == approx(C, abs=0.5e-12)

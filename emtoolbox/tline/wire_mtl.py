@@ -4,6 +4,7 @@
 
 import numpy as np
 from emtoolbox.utils.constants import MU0, EPS0
+import emtoolbox.fields.poisson_fdm as fdm
 
 
 class WireMtl():
@@ -21,7 +22,7 @@ class WireMtl():
         self.conductors = conductors
         self.er = er
     
-    def capacitance(self) -> np.ndarray:
+    def capacitance(self, /, method: str = None) -> np.ndarray:
         '''Calculate the capacitance matrix'''
         if len(self.conductors) != 2:
             raise Exception('Only two conductors are currently supported')
@@ -29,8 +30,51 @@ class WireMtl():
         x1, y1, r1 = w1
         x2, y2, r2 = w2
         s = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-        return np.array([wire_capacitance(s, r1, r2, er=self.er)])
-    
+        if method is None or method.lower() == 'ana':
+            return np.array([wire_capacitance(s, r1, r2, er=self.er)])
+        elif method.lower() == 'fdm':
+            # Define simulation region
+            pad = 20  # Zero potential boundaries must be far away
+            w_list = np.array([[xi - pad * ri for xi, _, ri in self.conductors],
+                               [xi + pad * ri for xi, _, ri in self.conductors]])
+            h_list = np.array([[yi - pad * ri for _, yi, ri in self.conductors],
+                               [yi + pad * ri for _, yi, ri in self.conductors]])
+            # Grid based on wire size or wire separation
+            dx = min(min(r1, r2) / 4, s / 12)
+            # TODO this grid is unlikely to line up with important edges
+            x = np.arange(w_list.min(), w_list.max(), dx)
+            y = np.arange(h_list.min(), h_list.max(), dx)
+            X, Y = np.meshgrid(x, y)
+            print(f'{x.max() - x.min():.3e}, {y.max() - y.min():.3e} dimensions')
+            print(f'{X.shape}, {dx:.3e} grid')
+            print(f'{X.size} points')
+            # Solve for potential
+            V1 = 100.0
+            bc1 = np.sqrt((X-x1)**2 + (Y-y1)**2) < r1
+            bc2 = np.sqrt((X-x2)**2 + (Y-y2)**2) < r2
+            bc_val = np.zeros_like(X)
+            bc_val[bc1] = 0.5 * V1
+            bc_val[bc2] = -0.5 * V1
+            bc_bool = bc_val != 0.0
+            V = fdm.poisson_2d(X, Y, bc=(bc_bool, bc_val), conv=1e-5)
+            er = self.er * np.ones_like(X)[:-1, :-1]
+            # Calculate charge and capacitances
+            C = np.zeros(len(self.conductors))
+            for i, (xi, yi, ri) in enumerate(self.conductors):
+                # Keep some distance from wire surface, but cannot overlap other wire
+                gpad = min(5 * ri, 0.8 * s)
+                xi1 = np.searchsorted(x, xi - gpad)
+                xi2 = np.searchsorted(x, xi + gpad)
+                yi1 = np.searchsorted(y, yi - gpad)
+                yi2 = np.searchsorted(y, yi + gpad)
+                print(f'({x[xi1]:.3e}, {x[xi2]:.3e}), ({y[yi1]:.3e}, {y[yi2]:.3e}) gauss')
+                C[i] = abs(fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2) / V1)
+            if abs(C[1] - C[0]) > 1e-12:
+                raise Exception(f'Inconsistent capacitance calculation: {C}')
+            return np.array([C[0]])
+        else:
+            raise Exception(f'Invalid method specified: {method}')
+
     def inductance(self) -> np.ndarray:
         '''Calculate the inductance matrix'''
         if len(self.conductors) != 2:
