@@ -279,5 +279,4 @@ def example_poisson_2d_coax():
 if __name__ == '__main__':
     example_poisson_2d()
     example_parallel_plates()
-    example_poisson_1d_bc()
     example_poisson_2d_coax()

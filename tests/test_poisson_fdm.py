@@ -251,7 +251,7 @@ def test_gauss_2d_coax():
     yi1 = np.searchsorted(y, -rm)
     yi2 = np.searchsorted(y, rm)
     gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
-    assert gauss == approx(expected, rel=0.02)
+    assert gauss == approx(expected, rel=0.01, abs=1e-14)
 
 
 def test_poisson_2d_coax_xsym():
@@ -331,7 +331,7 @@ def test_gauss_2d_coax_xsym():
     yi1 = np.searchsorted(y, -rm)
     yi2 = np.searchsorted(y, rm)
     gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
-    assert gauss == approx(expected, rel=0.02)
+    assert gauss == approx(expected, rel=0.01, abs=1e-14)
 
 
 def test_gauss_2d_coax_ysym():
@@ -354,7 +354,7 @@ def test_gauss_2d_coax_ysym():
     yi1 = 0
     yi2 = np.searchsorted(y, rm)
     gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
-    assert gauss == approx(expected, rel=0.02)
+    assert gauss == approx(expected, rel=0.01, abs=1e-14)
 
 
 def test_gauss_2d_coax_xysym():
@@ -377,4 +377,4 @@ def test_gauss_2d_coax_xysym():
     yi1 = 0
     yi2 = np.searchsorted(y, rm)
     gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
-    assert gauss == approx(expected, rel=0.02)
+    assert gauss == approx(expected, rel=0.01, abs=1e-14)

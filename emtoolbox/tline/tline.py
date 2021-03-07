@@ -175,7 +175,7 @@ if __name__ == '__main__':
     # print(line.impedance(w))
 
     print('--- Lossless ---')
-    line = create_lossless(Zc, er, length)
+    line = TLine.create_lossless(Zc, er, length)
     print(line.l, line.c, line.velocity(w), line.delay(w))
     print('attn', line.attn_const(w))
     print('phase', line.phase_const(w))
