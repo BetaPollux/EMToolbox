@@ -22,7 +22,7 @@ class WireMtl():
         self.conductors = conductors
         self.er = er
     
-    def capacitance(self, /, method: str = None) -> np.ndarray:
+    def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
         '''Calculate the capacitance matrix'''
         if len(self.conductors) != 2:
             raise Exception('Only two conductors are currently supported')
@@ -39,9 +39,8 @@ class WireMtl():
                                [xi + pad * ri for xi, _, ri in self.conductors]])
             h_list = np.array([[yi - pad * ri for _, yi, ri in self.conductors],
                                [yi + pad * ri for _, yi, ri in self.conductors]])
-            # Grid based on wire size or wire separation
-            dx = min(min(r1, r2) / 4, s / 12)
-            # TODO this grid is unlikely to line up with important edges
+            # Grid based on wire size or user configured
+            dx = fdm_params.get('dx', min(r1, r2) / 6)
             x = np.arange(w_list.min(), w_list.max(), dx)
             y = np.arange(h_list.min(), h_list.max(), dx)
             X, Y = np.meshgrid(x, y)
@@ -50,8 +49,8 @@ class WireMtl():
             print(f'{X.size} points')
             # Solve for potential
             V1 = 100.0
-            bc1 = np.sqrt((X-x1)**2 + (Y-y1)**2) < r1
-            bc2 = np.sqrt((X-x2)**2 + (Y-y2)**2) < r2
+            bc1 = np.sqrt((X-x1)**2 + (Y-y1)**2) <= r1
+            bc2 = np.sqrt((X-x2)**2 + (Y-y2)**2) <= r2
             bc_val = np.zeros_like(X)
             bc_val[bc1] = 0.5 * V1
             bc_val[bc2] = -0.5 * V1
@@ -62,14 +61,15 @@ class WireMtl():
             C = np.zeros(len(self.conductors))
             for i, (xi, yi, ri) in enumerate(self.conductors):
                 # Keep some distance from wire surface, but cannot overlap other wire
-                gpad = min(5 * ri, 0.8 * s)
+                # TODO make this more robust
+                gpad = ri + 4 * dx
                 xi1 = np.searchsorted(x, xi - gpad)
                 xi2 = np.searchsorted(x, xi + gpad)
                 yi1 = np.searchsorted(y, yi - gpad)
                 yi2 = np.searchsorted(y, yi + gpad)
                 print(f'({x[xi1]:.3e}, {x[xi2]:.3e}), ({y[yi1]:.3e}, {y[yi2]:.3e}) gauss')
                 C[i] = abs(fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2) / V1)
-            if abs(C[1] - C[0]) > 1e-12:
+            if abs((C[1] - C[0]) / C[0]) > 0.05:
                 raise Exception(f'Inconsistent capacitance calculation: {C}')
             return np.array([C[0]])
         else:
