@@ -63,6 +63,24 @@ def test_wire_inductance_rw2_too_close():
         mtl.wire_inductance(s, rw1, rw2)
 
 
+def test_wire_self_inductance():
+    # Paul MTL P5.4
+    rw = 7.5
+    di0 = 50
+    L = mtl.wire_self_inductance(di0, rw, rw)
+    assert L == approx(0.759e-6, rel=0.001)
+
+
+def test_wire_mutual_inductance():
+    # Paul MTL P5.4
+    rw = 7.5
+    di0 = 50
+    dj0 = 50
+    dij = 100
+    L = mtl.wire_mutual_inductance(di0, dj0, dij, rw)
+    assert L == approx(0.241e-6, rel=0.001)
+
+
 def test_one_conductor():
     with pytest.raises(Exception):
         mtl.WireMtl([(0, 0, 1)])
@@ -176,3 +194,25 @@ def test_two_wire_capacitance_fdm_rw2():
     print(expected)
     C = pair.capacitance(method='fdm')
     assert C == approx(expected, rel=0.05, abs=0.1e-12)
+
+
+def test_three_wire_inductance():
+    # Paul MTL P5.4
+    rw = 7.5
+    s = 50
+    wires = [(0, 0, rw), (-s, 0, rw), (s, 0, rw)]
+    pair = mtl.WireMtl(wires)
+    L = pair.inductance()
+    expected = np.array([[0.759, 0.241], [0.241, 0.759]]) * 1e-6
+    assert L == approx(expected, rel=0.001)
+
+
+def test_three_wire_capacitance():
+    # Paul MTL P5.4
+    rw = 7.5
+    s = 50
+    wires = [(0, 0, rw), (-s, 0, rw), (s, 0, rw)]
+    pair = mtl.WireMtl(wires)
+    C = pair.capacitance()
+    expected = np.array([[16.3, -5.17], [-5.17, 16.3]]) * 1e-12
+    assert C == approx(expected, rel=0.001, abs=1e-14)

@@ -24,15 +24,20 @@ class WireMtl():
     
     def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
         '''Calculate the capacitance matrix'''
-        if len(self.conductors) != 2:
-            raise Exception('Only two conductors are currently supported')
-        w1, w2 = self.conductors
-        x1, y1, r1 = w1
-        x2, y2, r2 = w2
-        s = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+        N = len(self.conductors) - 1
+        if N < 1:
+            raise Exception('Requires at least two conductors')
+        x0, y0, r0 = self.conductors[0]
         if method is None or method.lower() == 'ana':
-            return np.array([wire_capacitance(s, r1, r2, er=self.er)])
+            if N == 1:
+                x1, y1, r1 = self.conductors[1]
+                s = np.sqrt((x1 - x0)**2 + (y1 - y0)**2)
+                return np.array([wire_capacitance(s, r1, r0, self.er)])
+            else:
+                return MU0 * EPS0 * self.er * np.linalg.inv(self.inductance())
         elif method.lower() == 'fdm':
+            if N != 1:
+                raise Exception('FDM currently supports only two conductors')
             # Define simulation region
             pad = 20  # Zero potential boundaries must be far away
             w_list = np.array([[xi - pad * ri for xi, _, ri in self.conductors],
@@ -40,7 +45,8 @@ class WireMtl():
             h_list = np.array([[yi - pad * ri for _, yi, ri in self.conductors],
                                [yi + pad * ri for _, yi, ri in self.conductors]])
             # Grid based on wire size or user configured
-            dx = fdm_params.get('dx', min(r1, r2) / 6)
+            x1, y1, r1 = self.conductors[1]
+            dx = fdm_params.get('dx', min(r0, r1) / 6)
             x = np.arange(w_list.min(), w_list.max(), dx)
             y = np.arange(h_list.min(), h_list.max(), dx)
             X, Y = np.meshgrid(x, y)
@@ -49,8 +55,8 @@ class WireMtl():
             print(f'{X.size} points')
             # Solve for potential
             V1 = 100.0
-            bc1 = np.sqrt((X-x1)**2 + (Y-y1)**2) <= r1
-            bc2 = np.sqrt((X-x2)**2 + (Y-y2)**2) <= r2
+            bc1 = np.sqrt((X-x0)**2 + (Y-y0)**2) <= r0
+            bc2 = np.sqrt((X-x1)**2 + (Y-y1)**2) <= r1
             bc_val = np.zeros_like(X)
             bc_val[bc1] = 0.5 * V1
             bc_val[bc2] = -0.5 * V1
@@ -77,13 +83,24 @@ class WireMtl():
 
     def inductance(self) -> np.ndarray:
         '''Calculate the inductance matrix'''
-        if len(self.conductors) != 2:
-            raise Exception('Only two conductors are currently supported')
-        w1, w2 = self.conductors
-        x1, y1, r1 = w1
-        x2, y2, r2 = w2
-        s = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-        return np.array([wire_inductance(s, r1, r2)])
+        N = len(self.conductors) - 1
+        if N < 1:
+            raise Exception('Requires at least two conductors')
+        x0, y0, r0 = self.conductors[0]
+        d0 = [np.sqrt((xi - x0)**2 + (yi - y0)**2) for xi, yi, _ in self.conductors[1:]]
+        if N == 1:
+            *_, r1 = self.conductors[1]
+            L = np.array([wire_inductance(d0[0], r1, r0)])
+        else:
+            L = np.zeros((N, N))
+            for i, (xi, yi, ri) in enumerate(self.conductors[1:]):
+                L[i, i] = wire_self_inductance(d0[i], ri, r0)
+                for j, (xj, yj, _) in enumerate(self.conductors[1:]):
+                    if j != i:
+                        dij = np.sqrt((xi - xj)**2 + (yi - yj)**2)
+                        L[i, j] = wire_mutual_inductance(d0[i], d0[j], dij, r0)
+                        L[j, i] = L[i, j]
+        return L
 
 
 def wire_capacitance(s: float, rw1: float, rw2: float = None, er: float = 1.0) -> float:
@@ -114,3 +131,16 @@ def wire_inductance(s: float, rw1: float, rw2: float = None) -> float:
         if s < 2 * rw1:
             raise Exception('Separation must be greater than sum of radii')
         return MU0 / np.pi * np.arccosh(s / (2 * rw1))
+
+
+def wire_self_inductance(di0: float, rw0: float, rwi: float):
+    '''Inductance between wire i and reference wire 0
+    Uses widely separated assumption, di0/rw > 4'''
+    return MU0 / (2 * np.pi) * np.log(di0 ** 2 / (rw0 * rwi))
+
+
+def wire_mutual_inductance(di0: float, dj0: float, dij: float, rw0: float):
+    '''Inductance between wire i and wire j, with reference wire 0
+    Uses widely separated assumption, di0/rw > 4'''
+    return MU0 / (2 * np.pi) * np.log(di0 * dj0 / (dij * rw0))
+
