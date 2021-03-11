@@ -8,35 +8,43 @@ import emtoolbox.fields.poisson_fdm as fdm
 
 
 class WireMtl():
-    def __init__(self, conductors: list, er: float = 1.0):
+    def __init__(self, conductors: list, er: float = 1.0, ref: str = 'wire'):
         '''Create a wire-type MTL with the given conductors.
         The conductors are provided as position and radius (x0, y0, rw).
-        The conductors are immersed in a relative permittivity of er'''
-        if len(conductors) < 2:
-            raise Exception('Requires at least 2 conductors')
+        The conductors are immersed in a relative permittivity of er
+        ref is the reference conductor, options are:
+            wire
+            plane'''
+        if ref not in ('wire', 'plane'):
+            raise Exception('ref must be either wire or plane')
+        if ref == 'wire':
+            self.N = len(conductors) - 1
+        elif ref == 'plane':
+            self.N = len(conductors)
+        if self.N < 1:
+            raise Exception('Requires at least 2 conductors, or a reference plane')
         for w in conductors:
             if type(w) is not tuple or not list:
                 raise Exception(f'Bad conductor type: {w}')
             if len(w) != 3:
                 raise Exception(f'Bad conductor definition: {w}')
+        # TODO validate positions and radii
         self.conductors = conductors
         self.er = er
+        self.ref = ref
     
     def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
         '''Calculate the capacitance matrix'''
-        N = len(self.conductors) - 1
-        if N < 1:
-            raise Exception('Requires at least two conductors')
         x0, y0, r0 = self.conductors[0]
         if method is None or method.lower() == 'ana':
-            if N == 1:
+            if self.N == 1:
                 x1, y1, r1 = self.conductors[1]
                 s = np.sqrt((x1 - x0)**2 + (y1 - y0)**2)
                 return np.array([wire_capacitance(s, r1, r0, self.er)])
             else:
                 return MU0 * EPS0 * self.er * np.linalg.inv(self.inductance())
         elif method.lower() == 'fdm':
-            if N != 1:
+            if self.N != 1:
                 raise Exception('FDM currently supports only two conductors')
             # Define simulation region
             pad = 20  # Zero potential boundaries must be far away
@@ -83,23 +91,29 @@ class WireMtl():
 
     def inductance(self) -> np.ndarray:
         '''Calculate the inductance matrix'''
-        N = len(self.conductors) - 1
-        if N < 1:
-            raise Exception('Requires at least two conductors')
         x0, y0, r0 = self.conductors[0]
         d0 = [np.sqrt((xi - x0)**2 + (yi - y0)**2) for xi, yi, _ in self.conductors[1:]]
-        if N == 1:
+        if self.N == 1:
             *_, r1 = self.conductors[1]
             L = np.array([wire_inductance(d0[0], r1, r0)])
         else:
-            L = np.zeros((N, N))
-            for i, (xi, yi, ri) in enumerate(self.conductors[1:]):
-                L[i, i] = wire_self_inductance(d0[i], ri, r0)
-                for j, (xj, yj, _) in enumerate(self.conductors[1:]):
-                    if j != i:
-                        dij = np.sqrt((xi - xj)**2 + (yi - yj)**2)
-                        L[i, j] = wire_mutual_inductance(d0[i], d0[j], dij, r0)
-                        L[j, i] = L[i, j]
+            L = np.zeros((self.N, self.N))
+            if self.ref == 'wire':
+                for i, (xi, yi, ri) in enumerate(self.conductors[1:]):
+                    L[i, i] = wire_self_inductance(d0[i], ri, r0)
+                    for j, (xj, yj, _) in enumerate(self.conductors[1:]):
+                        if j != i:
+                            dij = np.sqrt((xi - xj)**2 + (yi - yj)**2)
+                            L[i, j] = wire_mutual_inductance(d0[i], d0[j], dij, r0)
+                            L[j, i] = L[i, j]
+            elif self.ref == 'plane':
+                for i, (xi, yi, ri) in enumerate(self.conductors):
+                    L[i, i] = wire_self_inductance_plane(yi, ri)
+                    for j, (xj, yj, _) in enumerate(self.conductors):
+                        if j != i:
+                            dij = np.sqrt((xi - xj)**2 + (yi - yj)**2)
+                            L[i, j] = wire_mutual_inductance_plane(yi, yj, dij)
+                            L[j, i] = L[i, j]
         return L
 
 
@@ -144,3 +158,12 @@ def wire_mutual_inductance(di0: float, dj0: float, dij: float, rw0: float):
     Uses widely separated assumption, di0/rw > 4'''
     return MU0 / (2 * np.pi) * np.log(di0 * dj0 / (dij * rw0))
 
+
+def wire_self_inductance_plane(hi: float, rwi: float):
+    '''Inductance between wire i with height hi above reference plane'''
+    return MU0 / (2 * np.pi) * np.log(2 * hi / rwi)
+
+
+def wire_mutual_inductance_plane(hi: float, hj: float, sij: float):
+    '''Inductance between wire i and wire j, above a reference plane'''
+    return MU0 / (4 * np.pi) * np.log(1 + 4 * hi * hj / sij**2)

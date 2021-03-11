@@ -216,3 +216,27 @@ def test_three_wire_capacitance():
     C = pair.capacitance()
     expected = np.array([[16.3, -5.17], [-5.17, 16.3]]) * 1e-12
     assert C == approx(expected, rel=0.001, abs=1e-14)
+
+
+def test_three_wire_inductance_plane():
+    # Paul MTL P5.7
+    rw = 0.04064
+    s = 2
+    h = 2
+    wires = [(-0.5 * s, h, rw), (0.5 * s, h, rw)]
+    pair = mtl.WireMtl(wires, ref='plane')
+    L = pair.inductance()
+    expected = np.array([[0.918, 0.161], [0.161, 0.918]]) * 1e-6
+    assert L == approx(expected, rel=0.001)
+
+
+def test_three_wire_capacitance_plane():
+    # Paul MTL P5.7
+    rw = 0.04064
+    s = 2
+    h = 2
+    wires = [(-0.5 * s, h, rw), (0.5 * s, h, rw)]
+    pair = mtl.WireMtl(wires, ref='plane')
+    C = pair.capacitance()
+    expected = np.array([[12.5, -2.19], [-2.19, 12.5]]) * 1e-12
+    assert C == approx(expected, rel=0.001, abs=1e-14)
