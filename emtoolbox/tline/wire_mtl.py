@@ -8,21 +8,25 @@ import emtoolbox.fields.poisson_fdm as fdm
 
 
 class WireMtl():
-    def __init__(self, conductors: list, er: float = 1.0, ref: str = 'wire'):
+    def __init__(self, conductors: list, er: float = 1.0, ref: str = 'wire', rs: float = None):
         '''Create a wire-type MTL with the given conductors.
         The conductors are provided as position and radius (x0, y0, rw).
         The conductors are immersed in a relative permittivity of er
         ref is the reference conductor, options are:
             wire
-            plane'''
-        if ref not in ('wire', 'plane'):
-            raise Exception('ref must be either wire or plane')
+            plane
+            shield
+        The shield reference requires radius of shield rs'''
+        if ref not in ('wire', 'plane', 'shield'):
+            raise Exception('ref must be wire, plane or shield')
         if ref == 'wire':
             self.N = len(conductors) - 1
-        elif ref == 'plane':
+        elif ref == 'plane' or ref == 'shield':
             self.N = len(conductors)
         if self.N < 1:
-            raise Exception('Requires at least 2 conductors, or a reference plane')
+            raise Exception('Requires at least 2 conductors, or a reference plane or shield')
+        if ref == 'shield' and rs is None:
+            raise Exception('Shield requires radius rs')
         for w in conductors:
             if type(w) is not tuple or not list:
                 raise Exception(f'Bad conductor type: {w}')
@@ -32,6 +36,7 @@ class WireMtl():
         self.conductors = conductors
         self.er = er
         self.ref = ref
+        self.rs = rs
     
     def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
         '''Calculate the capacitance matrix'''
@@ -114,6 +119,16 @@ class WireMtl():
                             dij = np.sqrt((xi - xj)**2 + (yi - yj)**2)
                             L[i, j] = wire_mutual_inductance_plane(yi, yj, dij)
                             L[j, i] = L[i, j]
+            elif self.ref == 'shield':
+                for i, (xi, yi, ri) in enumerate(self.conductors):
+                    di = np.sqrt(xi**2 + yi**2)
+                    L[i, i] = wire_self_inductance_shield(di, self.rs, ri)
+                    for j, (xj, yj, _) in enumerate(self.conductors):
+                        if j != i:
+                            dj = np.sqrt(xj**2 + yj**2)
+                            tij = np.arctan2(yi, xi) - np.arctan2(yj, xj)
+                            L[i, j] = wire_mutual_inductance_shield(di, dj, self.rs, tij)
+                            L[j, i] = L[i, j]
         return L
 
 
@@ -167,3 +182,17 @@ def wire_self_inductance_plane(hi: float, rwi: float):
 def wire_mutual_inductance_plane(hi: float, hj: float, sij: float):
     '''Inductance between wire i and wire j, above a reference plane'''
     return MU0 / (4 * np.pi) * np.log(1 + 4 * hi * hj / sij**2)
+
+
+def wire_self_inductance_shield(di: float, rs: float, rwi: float):
+    '''Inductance between wire i with distance di to center of shield with radius rs'''
+    return MU0 / (2 * np.pi) * np.log((rs**2 - di**2) / (rs * rwi))
+
+
+def wire_mutual_inductance_shield(di: float, dj: float, rs: float, tij: float):
+    '''Inductance between wire i and wire j within a shield or radius rs.
+    di and dj are distances to the center, with tij the angle between wires'''
+    return MU0 / (2 * np.pi) * np.log(dj / rs * np.sqrt(
+        ((di*dj)**2 + rs**4 - 2* di * dj * rs**2 * np.cos(tij)) /
+        ((di*dj)**2 + dj**4 - 2* di * dj**3 * np.cos(tij))
+    ))

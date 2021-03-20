@@ -218,7 +218,7 @@ def test_three_wire_capacitance():
     assert C == approx(expected, rel=0.001, abs=1e-14)
 
 
-def test_three_wire_inductance_plane():
+def test_two_wire_inductance_plane():
     # Paul MTL P5.7
     rw = 0.04064
     s = 2
@@ -230,7 +230,7 @@ def test_three_wire_inductance_plane():
     assert L == approx(expected, rel=0.001)
 
 
-def test_three_wire_capacitance_plane():
+def test_two_wire_capacitance_plane():
     # Paul MTL P5.7
     rw = 0.04064
     s = 2
@@ -239,4 +239,36 @@ def test_three_wire_capacitance_plane():
     pair = mtl.WireMtl(wires, ref='plane')
     C = pair.capacitance()
     expected = np.array([[12.5, -2.19], [-2.19, 12.5]]) * 1e-12
+    assert C == approx(expected, rel=0.001, abs=1e-14)
+
+
+def test_two_wire_shield_no_radius():
+    rw = 0.1905e-3
+    s = 4 * rw
+    wires = [(-0.5 * s, 0, rw), (0.5 * s, 0, rw)]
+    with pytest.raises(Exception):
+        mtl.WireMtl(wires, ref='shield')
+
+
+def test_two_wire_inductance_shield():
+    # Paul MTL P5.10
+    rw = 0.1905e-3
+    s = 4 * rw
+    rs = 4 * rw
+    wires = [(-0.5 * s, 0, rw), (0.5 * s, 0, rw)]
+    pair = mtl.WireMtl(wires, ref='shield', rs=rs)
+    L = pair.inductance()
+    expected = np.array([[0.2197, 0.0446], [0.0446, 0.2197]]) * 1e-6
+    assert L == approx(expected, rel=0.001)
+
+
+def test_two_wire_capacitance_shield():
+    # Paul MTL P5.11
+    rw = 0.1905e-3
+    s = 4 * rw
+    rs = 4 * rw
+    wires = [(-0.5 * s, 0, rw), (0.5 * s, 0, rw)]
+    pair = mtl.WireMtl(wires, ref='shield', rs=rs)
+    C = pair.capacitance()
+    expected = np.array([[52.8, -10.73], [-10.73, 52.8]]) * 1e-12
     assert C == approx(expected, rel=0.001, abs=1e-14)
