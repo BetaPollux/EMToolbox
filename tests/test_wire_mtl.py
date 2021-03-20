@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from pytest import approx
 import emtoolbox.tline.wire_mtl as mtl
+import emtoolbox.tline.coax as coax
 
 
 def test_wire_capacitance():
@@ -271,4 +272,15 @@ def test_two_wire_capacitance_shield():
     pair = mtl.WireMtl(wires, ref='shield', rs=rs)
     C = pair.capacitance()
     expected = np.array([[52.8, -10.73], [-10.73, 52.8]]) * 1e-12
+    assert C == approx(expected, rel=0.001, abs=1e-14)
+
+
+def test_one_wire_capacitance_shield():
+    rw = 0.5e-3
+    rs = 4e-3
+    er = 5.2
+    wires = [(0, 0, rw)]
+    cable = mtl.WireMtl(wires, er=er, ref='shield', rs=rs)
+    C = cable.capacitance()
+    expected = coax.capacitance(rw, rs, er)
     assert C == approx(expected, rel=0.001, abs=1e-14)

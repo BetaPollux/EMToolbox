@@ -42,15 +42,15 @@ class WireMtl():
         '''Calculate the capacitance matrix'''
         x0, y0, r0 = self.conductors[0]
         if method is None or method.lower() == 'ana':
-            if self.N == 1:
+            if self.ref == 'wire' and self.N == 1:
                 x1, y1, r1 = self.conductors[1]
                 s = np.sqrt((x1 - x0)**2 + (y1 - y0)**2)
                 return np.array([wire_capacitance(s, r1, r0, self.er)])
             else:
                 return MU0 * EPS0 * self.er * np.linalg.inv(self.inductance())
         elif method.lower() == 'fdm':
-            if self.N != 1:
-                raise Exception('FDM currently supports only two conductors')
+            if self.ref != 'wire' or self.N != 1:
+                raise Exception('FDM currently supports only two conductors, no reference')
             # Define simulation region
             pad = 20  # Zero potential boundaries must be far away
             w_list = np.array([[xi - pad * ri for xi, _, ri in self.conductors],
@@ -98,7 +98,7 @@ class WireMtl():
         '''Calculate the inductance matrix'''
         x0, y0, r0 = self.conductors[0]
         d0 = [np.sqrt((xi - x0)**2 + (yi - y0)**2) for xi, yi, _ in self.conductors[1:]]
-        if self.N == 1:
+        if self.ref == 'wire' and self.N == 1:
             *_, r1 = self.conductors[1]
             L = np.array([wire_inductance(d0[0], r1, r0)])
         else:
