@@ -13,3 +13,8 @@ COND_AG = 6.17e7
 COND_CU = 5.80e7
 COND_AU = 4.10e7
 COND_AL = 3.54e7
+
+# Colors
+RGB_CU = '#b87333'
+RGB_AL = '#848789'
+RGB_DIEL = '#a5a5a5'

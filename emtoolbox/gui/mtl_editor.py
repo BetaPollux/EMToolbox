@@ -8,6 +8,7 @@ from emtoolbox.gui.mtl_canvas import MtlCanvas
 import emtoolbox.tline.coax as coax
 import emtoolbox.utils.constants as const
 from emtoolbox.tline.tline import TLine
+from emtoolbox.tline.wire import Wire, Plane, Shield
 
 
 class MtlEditor(wx.Dialog):
@@ -39,7 +40,10 @@ class MtlEditor(wx.Dialog):
         self.update_canvas()
 
     def OnInput(self, event):
-        self.update_canvas()
+        try:
+            self.update_canvas()
+        except ValueError:
+            pass
 
     def update_canvas(self) -> None:
         inputs = hlp.parse_input_fields(self, 
@@ -48,8 +52,8 @@ class MtlEditor(wx.Dialog):
         rw = inputs.get('radius_w', 1e-3)
         rs = inputs.get('radius_s', 3e-3)
         self.canvas.clear_shapes()
-        self.canvas.add_shape('circle', 0, 0, rs)
-        self.canvas.add_shape('circle', 0, 0, rw)
+        self.canvas.add_conductor(Shield(rs))
+        self.canvas.add_conductor(Wire(0, 0, rw))
         self.canvas.redraw()
 
     def parse_rlgc_functions(self) -> dict:

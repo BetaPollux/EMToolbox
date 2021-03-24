@@ -30,8 +30,9 @@ class Wire():
 
 class Plane():
     '''Infinite plane located at (x, 0)'''
-    def __init__(self):
-        pass
+    def __init__(self, width: float = 50e-3, thickness: float = 0.5e-3):
+        self.width = width
+        self.thickness = thickness
 
     def height_of(self, wire):
         '''Returns height of wire above plane'''
@@ -40,10 +41,11 @@ class Plane():
 
 class Shield():
     '''Circular shield with a fixed radius, located at (0, 0)'''
-    def __init__(self, radius: float):
+    def __init__(self, radius: float, thickness: float = 0.5e-3):
         if radius <= 0:
             raise ValueError('Radius must be greater than 0')
         self.radius = radius
+        self.thickness = thickness
 
     def contains(self, wire):
         '''Returns whether the wire is fully inside the shield'''
