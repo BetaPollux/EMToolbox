@@ -5,21 +5,9 @@ import pytest
 from pytest import approx
 from emtoolbox.utils.constants import VP0
 from emtoolbox.tline.wire_mtl import WireMtl
-from emtoolbox.tline.lossless_mtl import LosslessMtl
+from emtoolbox.tline.lossless_mtl import LosslessMtl, ZcMtl
 
 ZC = 50
-
-class ZcMtl():
-    def __init__(self, zc, er=1.0):
-        self.velocity = VP0 / np.sqrt(er)
-        self.L = zc / self.velocity
-        self.C = 1 / (zc * self.velocity)
-    
-    def inductance(self):
-        return np.array([[self.L]])
-    
-    def capacitance(self):
-        return np.array([[self.C]])
 
 
 @pytest.mark.parametrize(

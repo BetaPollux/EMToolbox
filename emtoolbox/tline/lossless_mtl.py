@@ -1,6 +1,20 @@
 #!/usr/bin/python3
 
 import numpy as np
+from emtoolbox.utils.constants import VP0
+
+
+class ZcMtl():
+    def __init__(self, zc, velocity=VP0):
+        self.velocity = velocity
+        self.L = zc / self.velocity
+        self.C = 1 / (zc * self.velocity)
+    
+    def inductance(self):
+        return np.array([[self.L]])
+    
+    def capacitance(self):
+        return np.array([[self.C]])
 
 
 class LosslessMtl():
@@ -16,13 +30,13 @@ class LosslessMtl():
         return self.length / self.wavelength(f)
 
     def velocity(self):
-        return 1.0 / np.sqrt(self.L * self.C)
+        return float(1.0 / np.sqrt(self.L * self.C))
 
     def delay(self):
         return float(self.length * np.sqrt(self.L * self.C))
 
     def char_impedance(self):
-        return np.sqrt(self.L / self.C)
+        return float(np.sqrt(self.L / self.C))
 
     def prop_const(self, f):
         return 1.j * self.phase_const(f)
@@ -36,6 +50,6 @@ class LosslessMtl():
     def chain_param(self, f):
         a = np.cos(self.phase_const(f) * self.length)
         b = np.sin(self.phase_const(f) * self.length)
-        zc = float(self.char_impedance())
+        zc = self.char_impedance()
         return np.array([[a,                -1.j * b * zc],
                          [-1.j * b / zc,    a]])
