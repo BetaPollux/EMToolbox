@@ -18,3 +18,6 @@ COND_AL = 3.54e7
 RGB_CU = '#b87333'
 RGB_AL = '#848789'
 RGB_DIEL = '#a5a5a5'
+
+# Special characters
+CHR_OHM = chr(0x3a9)

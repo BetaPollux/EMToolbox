@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 '''Unit conversion functions'''
+import math
+import re
 
 def meters_from_mils(pos: float) -> float:
     '''Convert mils (0.001 inch) to meters'''
@@ -33,3 +35,47 @@ def wire_diameter_awg(awg: int) -> float:
 def wire_radius_awg(awg: int) -> float:
     '''Gets a wire radius, in meters, from AWG'''
     return 0.5 * wire_diameter_awg(awg)
+
+def engstr(num: float, precision: int = 3) -> str:
+    '''Convert a number into an engineering-formatted string'''
+    prefixes = {
+        -15: 'f',
+        -12: 'p',
+        -9: 'n',
+        -6: 'u',
+        -3: 'm',
+        0: '',
+        3: 'k',
+        6: 'M',
+        9: 'G',
+        12: 'T',
+        15: 'P'
+    }
+    if num == 0:
+        exponent = 0
+    elif abs(num) > 1:
+        exponent = 3 * int(math.log10(abs(num)) / 3)
+    else:
+        exponent = 3 * (int(math.log10(abs(num)) / 3) - 1)
+    try:
+        return f'{num/10**exponent:.{precision}f}{prefixes[exponent]}'
+    except KeyError:
+        return f'{num:.{precision}e}'
+
+def engfloat(num: str) -> float:
+    '''Convert an engineering-formatted string into a float'''
+    prefixes = {
+        'f': 1e-15,
+        'p': 1e-12,
+        'n': 1e-9,
+        'u': 1e-6,
+        'm': 1e-3,
+        '': 1.0,
+        'k': 1e3,
+        'M': 1e6,
+        'G': 1e9,
+        'T': 12.0,
+        'P': 15.0
+    }
+    regexp = re.match(r'^([0-9\-+eE.]+)\s*(\w*)$', num)
+    return float(regexp.groups()[0]) * prefixes[regexp.groups()[1]]

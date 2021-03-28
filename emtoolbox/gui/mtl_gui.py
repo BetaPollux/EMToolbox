@@ -4,6 +4,7 @@ import wx
 import emtoolbox.gui.mtl_wrapper as mtl_wrapper
 import emtoolbox.gui.helpers as hlp
 from emtoolbox.gui.mtl_editor import MtlEditor
+from emtoolbox.utils.constants import CHR_OHM
 
 class MtlFrame(wx.Frame):
     '''Top level frame for the multi-conductor transmission line solvers'''
@@ -59,10 +60,10 @@ class MtlFrame(wx.Frame):
         return field_sizer
 
     def input_fields(self):
-        return (hlp.pack_input_params('source_z', f'ZS ({chr(0x3a9)})', 50),
-                hlp.pack_input_params('load_z', f'ZL ({chr(0x3a9)})', 50),
+        return (hlp.pack_input_params('source_z', f'ZS ({CHR_OHM})', 50),
+                hlp.pack_input_params('load_z', f'ZL ({CHR_OHM})', 50),
                 hlp.pack_input_params('length', 'Length (m)', 1),
-                hlp.pack_input_params('tline_r', f'R ({chr(0x3a9)}/m)', 2),
+                hlp.pack_input_params('tline_r', f'R ({CHR_OHM}/m)', 2),
                 hlp.pack_input_params('tline_l', 'L (H/m)', 500e-9),
                 hlp.pack_input_params('tline_g', 'G (S/m)', 1e-8),
                 hlp.pack_input_params('tline_c', 'C (F/m)', 100e-12),
@@ -72,7 +73,7 @@ class MtlFrame(wx.Frame):
     def output_fields(self):
         return (hlp.pack_input_params('frequency', 'At Frequency (Hz)'),
                 hlp.pack_input_params('tline_td', 'Td (s)'),
-                hlp.pack_input_params('tline_zc', f'Zc ({chr(0x3a9)})'),
+                hlp.pack_input_params('tline_zc', f'Zc ({CHR_OHM})'),
                 hlp.pack_input_params('tline_vp', 'Vp (m/s)'),
                 hlp.pack_input_params('tline_attn', 'attn (dB/m)'),
                 hlp.pack_input_params('tline_phase', 'phase (deg/m)'))
@@ -90,6 +91,13 @@ class MtlFrame(wx.Frame):
             print(f'WireMtl # wires {len(line.wires)}, type {type(line.ref)}')
             print(f'L\n{line.inductance()}')
             print(f'C\n{line.capacitance()}')
+            outputs = {
+                'tline_l': f'{float(line.inductance()):.3e}',
+                'tline_c': f'{float(line.capacitance()):.3e}',
+                'tline_r': 0.0,
+                'tline_g': 0.0
+            }
+            hlp.populate_output_fields(self, outputs)
         editor.Destroy()
 
 

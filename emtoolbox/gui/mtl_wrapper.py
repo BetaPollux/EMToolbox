@@ -6,7 +6,10 @@ import cmath
 import numpy as np
 from emtoolbox.tline.tline import TLine, TerminatedTLine
 from emtoolbox.gui.plot_frame import PlotFrame
+from emtoolbox.utils.constants import CHR_OHM
 
+#TODO replace with an MtlPlotter class
+#TODO create new MtlNetworkSolver class
 
 def solve(inputs: dict, parent_window=None) -> dict:
     zs = float(inputs.get('source_z', 50))
@@ -35,7 +38,7 @@ def solve(inputs: dict, parent_window=None) -> dict:
               (src[0], 'Source'), (load[0], 'Load')),
              ('Current', 'Current (A)',
               (src[1], 'Source'), (load[1], 'Load')),
-             ('Impedance', f'Magnitude of Zc ({chr(0x3a9)})',
+             ('Characteristic Impedance', f'Magnitude of Zc ({CHR_OHM})',
               (zc, '|Zc|')),
              ('Attenuation', 'Attenuation (Np/m)',
               (attn, r'$\alpha$')),
