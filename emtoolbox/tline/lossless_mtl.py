@@ -46,6 +46,9 @@ class LosslessMtl():
         if units == 'deg' or units == 'deg/m':
             return np.rad2deg(beta)
         return beta
+    
+    def attn_const(self, f):
+        return np.zeros_like(f)
 
     def chain_param(self, f):
         a = np.cos(self.phase_const(f) * self.length)

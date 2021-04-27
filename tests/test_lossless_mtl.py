@@ -80,3 +80,8 @@ def test_chain_param(n, result):
     length = n * VP0 / freq
     tline = LosslessMtl(ZcMtl(ZC), length=length)
     assert tline.chain_param(freq) == approx(result, rel=0.001)
+
+def test_attn_const():
+    f = [1, 10, 100]
+    tline = LosslessMtl(ZcMtl(ZC))
+    assert tline.attn_const(f) == approx(0.0)

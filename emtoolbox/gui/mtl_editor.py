@@ -6,9 +6,11 @@ import wx
 import wx.grid
 import emtoolbox.gui.helpers as hlp
 from emtoolbox.gui.mtl_canvas import MtlCanvas
+from emtoolbox.gui.mtl_plotter import MtlPlotter
 import emtoolbox.utils.constants as const
 from emtoolbox.tline.wire_mtl import WireMtl
 from emtoolbox.tline.wire import Wire, Plane, Shield
+from emtoolbox.tline.lossless_mtl import LosslessMtl
 
 
 DEFAULT_RS = 3e-3
@@ -33,6 +35,9 @@ class MtlEditor(wx.Dialog):
         for i, lbl in enumerate(col_labels):
             self.grid.SetColLabelValue(i, lbl)
 
+        plot_btn = wx.Button(self, wx.ID_ANY, 'Plot')
+        self.Bind(wx.EVT_BUTTON, self.OnPlot, plot_btn)
+
         for _, txt in text_fields:
             self.Bind(wx.EVT_TEXT, self.OnInput, txt)
         for _, cmb in choice_fields:
@@ -43,6 +48,7 @@ class MtlEditor(wx.Dialog):
         content_sizer = wx.BoxSizer(wx.HORIZONTAL)
         field_sizer = wx.BoxSizer(wx.VERTICAL)
         field_sizer.Add(hlp.layout_fields([*choice_fields, *text_fields]), 0, 0)
+        field_sizer.Add(plot_btn, 0, 0)
         field_sizer.Add(self.grid, 0, 0)
         content_sizer.Add(field_sizer, 0, 0)
         content_sizer.Add(self.canvas, 1, wx.EXPAND)
@@ -62,6 +68,11 @@ class MtlEditor(wx.Dialog):
             self.update_canvas(self.get_mtl())
         except ValueError:
             pass
+    
+    def OnPlot(self, event):
+        mtl = LosslessMtl(self.get_mtl())
+        plotter = MtlPlotter(mtl, parent_window=self)
+        plotter.Show()
 
     def update_grid(self, wires):
         for i, w in enumerate(wires):
