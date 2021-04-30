@@ -346,7 +346,7 @@ def main():
         fig, animate, fargs=(fig, ax, surf, grid, X, Y), interval=40,
         frames=len(grid.data))
 
-    f = r"fdtd-2d.gif"
+    f = r"fdtd_2d.gif"
     print('Saving', f, '...', end='')
     writergif = animation.PillowWriter(fps=25)
     ani.save(f, writer=writergif)

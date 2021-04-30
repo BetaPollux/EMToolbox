@@ -4,9 +4,11 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-
-eps0 = 8.8541878176e-12
-mu0 = 4e-7 * np.pi
+try:
+    from emtoolbox.utils.constants import EPS0, MU0
+except ImportError:
+    EPS0 = 8.854e-12
+    MU0 = 4e-7 * np.pi
 
 
 class Material:
@@ -18,51 +20,50 @@ class Material:
         self.thickness = thickness
         self.label = label
 
-    def ec(self, w):
-        return eps0 * self.er - 1.j * self.cond / w
+    def ec(self, f):
+        return EPS0 * self.er - 1.j * self.cond / (2 * np.pi * f)
 
-    def impedance(self, w):
-        return np.sqrt(mu0 * self.ur / self.ec(w))
+    def impedance(self, f):
+        return np.sqrt(MU0 * self.ur / self.ec(f))
 
-    def wave_number(self, w):
-        return w * np.sqrt(mu0 * self.ur * self.ec(w))
+    def wave_number(self, f):
+        return 2 * np.pi * f * np.sqrt(MU0 * self.ur * self.ec(f))
 
-    def skin_depth(self, w):
-        return np.sqrt(2 / (w * mu0 * self.ur * self.cond))
+    def skin_depth(self, f):
+        return np.sqrt(1 / (f * np.pi * MU0 * self.ur * self.cond))
 
 
 def db(values):
     return 20 * np.log10(values)
 
 
-def reflection_loss(w, medium, shield):
-    Zo = medium.impedance(w)
-    Zs = shield.impedance(w)
+def reflection_loss(f, medium, shield):
+    Zo = medium.impedance(f)
+    Zs = shield.impedance(f)
     return np.abs(((Zo + Zs) ** 2) / (4 * Zo * Zs))
 
 
-def absorption_loss(w, shield):
-    return np.abs(np.exp(1.j * shield.wave_number(w) *
+def absorption_loss(f, shield):
+    return np.abs(np.exp(1.j * shield.wave_number(f) *
                          shield.thickness))
 
 
-def multiple_reflection_loss(w, medium, shield):
-    x = medium.impedance(w) / shield.impedance(w)
+def multiple_reflection_loss(f, medium, shield):
+    x = medium.impedance(f) / shield.impedance(f)
     return np.abs(1 - ((x - 1) ** 2 / (x + 1) ** 2) *
-                  np.exp(-1.j * 2 * shield.wave_number(w) * shield.thickness))
+                  np.exp(-1.j * 2 * shield.wave_number(f) * shield.thickness))
 
 
-def shielding_effectiveness(w, medium, shield):
-    return (reflection_loss(w, medium, shield) *
-            absorption_loss(w, shield) *
-            multiple_reflection_loss(w, medium, shield))
+def shielding_effectiveness(f, medium, shield):
+    return (reflection_loss(f, medium, shield) *
+            absorption_loss(f, shield) *
+            multiple_reflection_loss(f, medium, shield))
 
 
 def plot_impedance(f, medium, *args):
-    w = 2 * np.pi * f
     fig, ax = plt.subplots()
     for mat in args:
-        ax.loglog(f, np.abs(mat.impedance(w)), label=mat.label)
+        ax.loglog(f, np.abs(mat.impedance(f)), label=mat.label)
     ax.set_title('Impedance')
     ax.set_xlabel('Frequency (Hz)')
     ax.set_ylabel('Impedance (Ohm)')
@@ -71,14 +72,13 @@ def plot_impedance(f, medium, *args):
 
 
 def plot_loss(f, medium, *args):
-    w = 2 * np.pi * f
     fig, axes = plt.subplots(3, 1, sharex=True)
     for mat in args:
-        axes[0].semilogx(f, db(reflection_loss(w, medium, mat)),
+        axes[0].semilogx(f, db(reflection_loss(f, medium, mat)),
                          label=mat.label)
-        axes[1].loglog(f, db(absorption_loss(w, mat)),
+        axes[1].loglog(f, db(absorption_loss(f, mat)),
                        label=mat.label)
-        axes[2].semilogx(f, db(multiple_reflection_loss(w, medium, mat)),
+        axes[2].semilogx(f, db(multiple_reflection_loss(f, medium, mat)),
                          label=mat.label)
 
     axes[0].set_title('Loss Terms')
@@ -98,10 +98,9 @@ def plot_loss(f, medium, *args):
 
 
 def plot_shielding(f, medium, *args):
-    w = 2 * np.pi * f
     fig, ax = plt.subplots()
     for mat in args:
-        ax.semilogx(f, db(shielding_effectiveness(w, medium, mat)),
+        ax.semilogx(f, db(shielding_effectiveness(f, medium, mat)),
                     label=mat.label)
 
     ax.set_title('Shielding Effectiveness')

@@ -34,7 +34,7 @@ class Grid1D:
         return s
 
     def set_material(self, start, stop, er=1.0, cond=0.0):
-        indices = (self.x >= start) & (self.x <= stop)
+        indices = (self.x >= start) & (self.x < stop)
         eaf = self.dt * cond / (2 * eps0 * er)
         self.ca[indices] = (1 - eaf) / (1 + eaf)
         self.cb[indices] = 0.5 / (er * (1 + eaf))
@@ -50,7 +50,7 @@ class Grid1D:
         abc_left = [0, 0]
         abc_right = [0, 0]
 
-        print('Solving {0} time steps'.format(len(self.t)))
+        print('Solving {0:.3e} seconds, {1} time steps'.format(total_time, len(self.t)))
         print_ids = np.linspace(0, len(self.t) - 1, 11, dtype='int64')
 
         for time_id, time in enumerate(self.t):
@@ -62,7 +62,7 @@ class Grid1D:
             self.ez[1:] = self.ca[1:] * self.ez[1:] + self.cb[1:] * (self.hy[:-1] - self.hy[1:])
 
             for source in self.sources:
-                self.ez[source.position] += source.solve(time)
+                self.ez[source.idx] += source.solve(time)
 
             self.ez[0] = abc_left.pop()
             abc_left.insert(0, self.ez[1])
@@ -72,7 +72,7 @@ class Grid1D:
             self.hy[:-1] = self.hy[:-1] + 0.5 * (self.ez[:-1] - self.ez[1:])
 
             for probe in self.probes:
-                probe.data[time_id] = self.ez[probe.position]
+                probe.data[time_id] = self.ez[probe.idx]
 
             if time_id in frame_ids:
                 self.data.append(self.ez.copy())
@@ -82,9 +82,11 @@ class Grid1D:
         print(f'Elapsed {end_time - start_time}')
 
     def add_source(self, source):
+        source.idx = np.searchsorted(self.x, source.position)
         self.sources.append(source)
 
     def add_probe(self, probe):
+        probe.idx = np.searchsorted(self.x, probe.position)
         self.probes.append(probe)
 
 
@@ -92,12 +94,14 @@ class Probe:
     def __init__(self, position, label='Probe'):
         self.position = position
         self.data = np.empty(1)
+        self.idx = 0
         self.label = label
 
 
 class Source:
     def __init__(self, position, label='Source'):
         self.position = position
+        self.idx = 0
         self.label = label
 
 
@@ -200,16 +204,15 @@ def main():
     n_frames = 250
     dx = 0.01
     grid = Grid1D(dx, 2.0)
-    grid.set_material(1.0, 1.5, er=4.0, cond=0.04)
+    grid.set_material(1.0, 1.5, er=4.0, cond=0.0)
     # grid = create_shield(0.25e-3, 1.0, 11.6e8)
     print(grid)
-
-    src_z = 5
+    src_z = 0.1
     source = Gaussian(src_z, 'Gaussian', 1.0, 40 * grid.dt, 12 * grid.dt)
     # source = Sinusoid(src_z, 'Sine', 1.0, 200e6)
     # source = SinusoidalGauss(src_z, 'Sine-Gauss', 1e7, 1e9)
     grid.add_source(source)
-    grid.add_probe(Probe(grid.ndx - 5, 'Transmitted'))
+    grid.add_probe(Probe(1.9, 'Transmitted'))
     grid.solve(total_time, n_frames)
 
     fig, axes = plt.subplots(2, 1, sharex=True)
@@ -232,12 +235,11 @@ def main():
         fig2, animate, fargs=(eline, grid.data), interval=40,
         blit=True, frames=len(grid.data))
 
-    f = r"fdtd-1d.gif"
+    f = r"fdtd_1d.gif"
     print('Saving', f, '...', end='')
     writergif = animation.PillowWriter(fps=25)
     ani.save(f, writer=writergif)
     print(' done.')
-
     source_data = source.solve(grid.t)
     plot_time_freq(source_data, grid.t, grid.dt, 'Source')
     for probe in grid.probes:

@@ -6,7 +6,8 @@ import math
 
 VP0 = 299792458
 MU0 = 4e-7 * math.pi
-EPS0 = 8.854e-12
+EPS0 = 1 / (VP0 **2 * MU0)
+ETA0 = MU0 * VP0
 
 # Average, low-frequency at room temperature
 COND_AG = 6.17e7

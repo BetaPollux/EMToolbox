@@ -13,7 +13,7 @@ def test_capacitance():
 
 def test_capacitance_area():
     pp = ParallelPlates(3.5, 1e-3, area=10.0)
-    assert pp.capacitance() == approx(309.89e-9)
+    assert pp.capacitance() == approx(309.89e-9, rel=0.001)
 
 
 def test_get_arrays():
