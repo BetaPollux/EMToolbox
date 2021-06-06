@@ -50,7 +50,7 @@ class ParallelPlates:
             raise Exception('Invalid range of X provided')
         D = self.charge(Va) / self.area
         cond = [(X <= x0 + t) for _, t, x0 in self.slabs]
-        choice = [D / (EPS0 * er) for er, *_ in self.slabs]
+        choice = [-D / (EPS0 * er) for er, *_ in self.slabs]
         return np.select(cond, choice)
 
     def potential(self, X, Va, Vref=0):

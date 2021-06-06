@@ -30,7 +30,7 @@ def test_efield():
     pp = ParallelPlates(3.5, t)
     X = np.linspace(0, t, N)
     Va = 10.0
-    expected = Va / t * np.ones(N)
+    expected = -Va / t * np.ones(N)
     efield = pp.efield(X, Va)
     assert efield == approx(expected)
 
@@ -104,8 +104,8 @@ def test_efield_2layer():
     pp = ParallelPlates((er1, er2), (t1, t2))
     X = np.linspace(0, 4e-3, 5)
     E = pp.efield(X, 200)
-    E1 = 12.5 / t1
-    E2 = 187.5 / t2
+    E1 = -12.5 / t1
+    E2 = -187.5 / t2
     assert E == approx([E1, E1, E2, E2, E2])
 
 
