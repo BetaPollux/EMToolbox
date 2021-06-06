@@ -76,7 +76,7 @@ class Grid2D:
             self.gj3[n] = self.gj3[-1-n] = (1.0 - xn) / (1.0 + xn)
 
             xxn = (xnum - 0.5) / xd
-            xn = 0.25 * (xxn ** 3)
+            xn = 0.33 * (xxn ** 3)
             self.fi1[n] = self.fi1[-2-n] = xn
             self.fi2[n] = self.fi2[-2-n] = 1.0 / (1.0 + xn)
             self.fi3[n] = self.fi3[-2-n] = (1.0 - xn) / (1.0 + xn)
@@ -85,10 +85,9 @@ class Grid2D:
             self.fj2[n] = self.fj2[-2-n] = 1.0 / (1.0 + xn)
             self.fj3[n] = self.fj3[-2-n] = (1.0 - xn) / (1.0 + xn)
 
-    def set_material(self, p1, p2, er=1.0, cond=0.0):
-        self.ga[p1[0]:p2[0], p1[1]:p2[1]] = 1.0 / (er +
-                                                   (cond * self.dt / eps0))
-        self.gb[p1[0]:p2[0], p1[1]:p2[1]] = cond * self.dt / eps0
+    def set_material(self, P, er=1.0, cond=0.0):
+        self.ga[P] = 1.0 / (er + (cond * self.dt / eps0))
+        self.gb[P] = cond * self.dt / eps0
 
     def update_dz(self):
         self.dz[1:, 1:] =   self.gi3[1:] * self.gj3[1:] * self.dz[1:, 1:] + \
@@ -159,21 +158,19 @@ class Grid2D:
             self.update_dz()
 
             for source in self.plane_sources:
-                self.ez_inc[source.position] = source.solve(time)
+                self.ez_inc[source.idx] = source.solve(time)
 
             self.update_ez()
 
             for source in self.sources:
-                self.ez[source.position[0],
-                        source.position[1]] += source.solve(time)
+                self.ez[source.idx[0], source.idx[1]] += source.solve(time)
 
             self.update_hx_inc()
             self.update_hx()
             self.update_hy()
 
             for probe in self.probes:
-                probe.data[time_id] = self.ez[probe.position[0],
-                                              probe.position[1]]
+                probe.data[time_id] = self.ez[probe.idx[0], probe.idx[1]]
 
             if time_id in frame_ids:
                 self.data.append(self.ez.copy())
@@ -183,18 +180,25 @@ class Grid2D:
         print(f'Elapsed {end_time - start_time}')
 
     def add_source(self, source):
+        x0, y0 = source.position
+        source.idx = (np.searchsorted(self.x, x0), np.searchsorted(self.y, y0))
         self.sources.append(source)
 
     def add_plane_source(self, source):
+        # Propagating in y-direction
+        source.idx = np.searchsorted(self.y, source.position)
         self.plane_sources.append(source)
 
     def add_probe(self, probe):
+        x0, y0 = probe.position
+        probe.idx = (np.searchsorted(self.x, x0), np.searchsorted(self.y, y0))
         self.probes.append(probe)
 
 
 class Probe:
     def __init__(self, position, label='Probe'):
         self.position = position
+        self.idx = 0, 0
         self.data = np.empty(1)
         self.label = label
 
@@ -202,6 +206,7 @@ class Probe:
 class Source:
     def __init__(self, position, label='Source'):
         self.position = position
+        self.idx = 0, 0
         self.label = label
 
 
@@ -270,7 +275,7 @@ def plot_ez(fig, ax, X, Y, Z):
                  'linewidth': 0,
                  'antialiased': False}
     surf = ax.plot_surface(X, Y, Z, **surf_args)
-    ax.set_zlim(0, 1)
+    ax.set_zlim(-2, 2)
     ax.set_xlabel('x (m)')
     ax.set_ylabel('y (m)')
     ax.set_zlabel('Ez')
@@ -311,23 +316,27 @@ def plot_response(input, output, time, dt, title='Response'):
 
 
 def main():
-    total_time = 5e-9
-    n_frames = 125
+    total_time = 25e-9
+    n_frames = 300
     dx = 0.01
-    grid = Grid2D(dx, 0.6, 0.6)
+    grid = Grid2D(dx, 1.0, 1.0)
     grid.init_pml(8)
     print(grid)
-    p1 = np.array([25, 35])
-    p2 = np.array([25, 35])
-    # grid.set_material(p1, p2, er=4.0, cond=10.0)
-    # src_pos = np.array([[30], [15]])
-    # source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
+    X, Y = np.meshgrid(grid.x, grid.y)
+    x0, y0 = 0.5, 0.5
+    radius = 0.1
+    P = np.sqrt((X - x0)**2 + (Y - y0)**2) < radius
+    grid.set_material(P, cond=1e7)
+    src_pos = 0.0
+    source = Gaussian(src_pos, 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt)
     # source = Sinusoid(src_pos, 'Sine 1 GHz', 1.0, 1e9)
     # source = SinusoidalGauss(src_pos, 'Sine-Gauss 1 GHz', 5e8, 2e9)
-    source = Gaussian(3, 'PlaneGaussian', 1.0, 20 * grid.dt, 8 * grid.dt)
-    # grid.add_source(source)
+    # source = Gaussian(src_pos, 'PlaneGaussian', 1.0, 20 * grid.dt, 8 * grid.dt)
     grid.add_plane_source(source)
-    grid.add_probe(Probe(np.array([[50], [50]]), 'Corner'))
+    #grid.add_source(Gaussian((0.1, 0.1), 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt))
+    grid.add_probe(Probe((x0, 0.2), 'Front'))
+    grid.add_probe(Probe((x0, y0), 'Middle'))
+    grid.add_probe(Probe((x0, 0.9), 'Behind'))
     grid.solve(total_time, n_frames)
 
     X, Y = np.meshgrid(grid.x, grid.y, indexing='ij')
