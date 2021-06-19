@@ -134,6 +134,60 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
     return V
 
 
+#@jit(nopython=True)
+def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
+               v_left: float=0, v_right: float=0,
+               v_top: float=0, v_bottom: float=0,
+               v_front: float=0, v_back: float=0,
+               dielectric: np.ndarray=None, charge: np.ndarray=None,
+               bc: list=None, sor=1.8, xsym: bool=False, ysym: bool=False, zsym: bool=False,
+               conv: float= 1e-5, Nmax: int=1e5):
+    '''Three-dimension Poisson equation with fixed potential boundaries.
+    Normalized charge density ps/eps can be provided via the charge argument'''
+    if X[0, 1, 0] == X[0, 0, 0] or Y[1, 0, 0] == Y[0, 0, 0] or Z[0, 0, 1] == Z[0, 0, 0]:
+        raise Exception('X, Y and Z must have xy indexing')
+    if abs(abs(X[0, 0, 1] - X[0, 0, 0]) - abs(Y[0, 1, 0] - Y[0, 0, 0])) > 1e-6:
+        raise Exception('X, Y and Z must have the same spacing')
+    if charge is not None:
+        raise Exception('Charge is currently not supported')
+    # TODO enforce array types
+    # TODO verify dimensions/indices
+    # TODO apply boundary conditions
+    V = np.zeros_like(X, dtype='float64')
+    nx = X.shape[2]
+    ny = X.shape[1]
+    nz = X.shape[0]
+    if bc is None:
+        bc_bool = np.array([[False], [False]])
+        bc_val = np.array([[0.0], [0.0]])
+    else:
+        bc_bool, bc_val = bc
+        for k in range(nz):
+            for j in range(ny):
+                for i in range(nx):
+                    if bc_bool[k, j, i]:
+                        V[k, j, i] = bc_val[k, j, i]
+    for n in range(int(Nmax)):
+        Vsum = 0
+        Verr = 0
+        for k in range(1, nz-1):
+            for j in range(1, ny-1):
+                for i in range(1, nx-1):
+                    V_old = V[k, j, i]
+                    if not bc or not bc_bool[k, j, i]:
+                        if dielectric is None:
+                            R = (V[k, j+1, i] + V[k, j-1, i] +
+                                 V[k, j, i+1] + V[k, j, i-1] + 
+                                 V[k+1, j, i] + V[k-1, j, i]) / 6 - V_old
+                        V[k, j, i] = R * sor + V_old
+                        Verr += abs(R)
+                        Vsum += abs(V[k, j, i])
+        if Vsum > 0 and Verr / Vsum < conv:
+            break
+    print('3D Error', Verr / Vsum, 'after', n+1, 'iterations')
+    return V
+
+
 def gauss_1d(X: np.ndarray, V: np.ndarray, er: np.ndarray, i: int):
     '''One-dimensional Gauss' law, returning enclosed charge
     Evaluated at array index i

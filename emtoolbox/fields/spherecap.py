@@ -65,6 +65,7 @@ class SphereCapacitor:
             R = X
         else:
             R = np.sqrt(X**2 + Y**2 + Z**2)
+        R[R == 0.0] = 1e-12
         condlist = [R < self.ri, R > self.ro]
         choicelist = [Vref + Va, Vref]
         V0 = Vref + Va

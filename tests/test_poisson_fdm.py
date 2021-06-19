@@ -3,6 +3,7 @@
 import numpy as np
 from emtoolbox.fields.pplate import ParallelPlates
 from emtoolbox.fields.coaxcap import CoaxCapacitor
+from emtoolbox.fields.spherecap import SphereCapacitor
 import emtoolbox.fields.poisson_fdm as fdm
 import pytest
 from pytest import approx
@@ -378,3 +379,23 @@ def test_gauss_2d_coax_xysym():
     yi2 = np.searchsorted(y, rm)
     gauss = fdm.gauss_2d(X, Y, V, er, xi1, xi2, yi1, yi2)
     assert gauss == approx(expected, rel=0.01, abs=1e-14)
+
+
+def test_poisson_3d_sphere():
+    ri = 2.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    N = 51
+    Va = 10.0
+    x = np.linspace(-w, w, N)
+    y = np.linspace(-w, w, N)
+    z = np.linspace(-w, w, N)
+    X, Y, Z = np.meshgrid(x, y, z)
+    R = np.sqrt(X**2 + Y**2 + Z**2)
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    sc = SphereCapacitor(ri, 1.0, ro - ri)
+    expected = sc.potential(X, Y, Z, Va=Va)
+    potential = fdm.poisson_3d(X, Y, Z, bc=bc, conv=1e-5)
+    assert potential == approx(expected, abs=0.8)
