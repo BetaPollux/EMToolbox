@@ -8,7 +8,7 @@ from emtoolbox.fields.coaxcap import CoaxCapacitor
 
 def test_capacitance():
     cc = CoaxCapacitor(0.5e-3, 5.2, 3.5e-3)
-    assert cc.capacitance() == approx(139.1e-12)
+    assert cc.capacitance() == approx(139.1e-12, abs=0.1e-12)
 
 
 def test_capacitance_length():
@@ -164,3 +164,25 @@ def test_efield_2layer():
     R = np.array([8e-3, 10e-3, 10.001e-3, 30e-3])
     E = cc.efield(R, Va=12500)
     assert E == approx(np.array([0.6456e6, 0.5165e6, 1.033e6, 0.3443e6]), abs=1e3)
+
+
+def test_potential_2layer_2():
+    # Cheng Ex. 3-16
+    ri = 4e-3
+    er1, t1 = 3.2, (6.16e-3 - ri)
+    er2, t2 = 2.6, (8.32e-3 - 6.16e-3)
+    cc = CoaxCapacitor(ri, (er1, er2), (t1, t2))
+    R = np.array([ri, ri + t1, ri + t1 + t2])
+    V = cc.potential(R, Va=20e3)
+    assert V == approx(np.array([20e3, 9.3e3, 0]), rel=0.01)
+
+
+def test_efield_2layer_2():
+    # Cheng Ex. 3-16
+    ri = 4e-3
+    er1, t1 = 3.2, (6.16e-3 - ri)
+    er2, t2 = 2.6, (8.32e-3 - 6.16e-3)
+    cc = CoaxCapacitor(ri, (er1, er2), (t1, t2))
+    R = np.array([ri, 0.999 * (ri + t1), 1.001 * (ri + t1), ri + t1 + t2])
+    E = cc.efield(R, Va=20e3)
+    assert E == approx(np.array([6.25e6, 4.06e6, 5.00e6, 3.71e6]), rel=0.01)
