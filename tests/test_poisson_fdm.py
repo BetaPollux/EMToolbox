@@ -59,7 +59,7 @@ def test_poisson_2d():
     h = 1.0
     x = np.linspace(0, w, 101)
     y = np.linspace(0, h, 51)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     bc = {'v_top': 10, 'v_left': 5, 'v_right': -2, 'v_bottom': -4}
     V = fdm.poisson_2d(X, Y, **bc, conv=1e-5)
     Va = fdm.trough_analytical(X, Y, **bc)
@@ -158,7 +158,7 @@ def test_poisson_1d_bc_slice():
 def test_poisson_2d_bc():
     x = np.linspace(0, 1, 5)
     y = np.linspace(0, 1, 5)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     bc_val = np.zeros_like(X)
     bc_val[2, 2] = 12.0
     bc_bool = bc_val > 0
@@ -174,7 +174,7 @@ def test_poisson_2d_bc():
 def test_poisson_2d_bc_mult():
     x = np.linspace(0, 1, 5)
     y = np.linspace(0, 1, 5)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     vbc1 = 13
     vbc2 = 7
     bc_val = np.zeros_like(X)
@@ -190,7 +190,7 @@ def test_poisson_2d_bc_mult():
 def test_poisson_2d_bc_slice():
     x = np.linspace(0, 1, 5)
     y = np.linspace(0, 1, 5)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     vbc = 16
     bc_val = np.zeros_like(X)
     bc_val[1:4, 2] = vbc
@@ -208,7 +208,7 @@ def test_poisson_2d_coax():
     Va = 10.0
     x = np.linspace(-w, w, N)
     y = np.linspace(-w, w, N)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     R = np.sqrt(X**2 + Y**2)
     bc_bool = np.logical_or(R < ri, R > ro)
     bc_val = np.select([R < ri, R > ro], [Va, 0])
@@ -224,7 +224,7 @@ def test_poisson_2d_dielectric():
     h = 1.0
     x = np.linspace(0, w, 41)
     y = np.linspace(0, h, 21)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     bc = {'v_top': 10, 'v_left': 5, 'v_right': -2, 'v_bottom': -4}
     er = np.ones_like(X)[:-1, :-1]
     V1 = fdm.poisson_2d(X, Y, **bc, conv=1e-3)
@@ -242,7 +242,7 @@ def test_gauss_2d_coax():
     Va = 10.0
     x = np.arange(0, w, dx)
     y = np.arange(-w, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     cc = CoaxCapacitor(ri, 1.0, ro - ri)
     V = cc.potential(X, Y, Va=Va)
     expected = cc.charge(Va)
@@ -263,7 +263,7 @@ def test_poisson_2d_coax_xsym():
     Va = 10.0
     x = np.arange(0, w, dx)
     y = np.arange(-w, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     R = np.sqrt(X**2 + Y**2)
     bc_bool = np.logical_or(R < ri, R > ro)
     bc_val = np.select([R < ri, R > ro], [Va, 0])
@@ -282,7 +282,7 @@ def test_poisson_2d_coax_ysym():
     Va = 10.0
     x = np.arange(-w, w, dx)
     y = np.arange(0, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     R = np.sqrt(X**2 + Y**2)
     bc_bool = np.logical_or(R < ri, R > ro)
     bc_val = np.select([R < ri, R > ro], [Va, 0])
@@ -301,7 +301,7 @@ def test_poisson_2d_coax_xysym():
     Va = 10.0
     x = np.arange(0, w, dx)
     y = np.arange(0, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     R = np.sqrt(X**2 + Y**2)
     bc_bool = np.logical_or(R < ri, R > ro)
     bc_val = np.select([R < ri, R > ro], [Va, 0])
@@ -322,7 +322,7 @@ def test_gauss_2d_coax_xsym():
     Va = 10.0
     x = np.arange(0, w, dx)
     y = np.arange(-w, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     cc = CoaxCapacitor(ri, 1.0, ro - ri)
     V = cc.potential(X, Y, Va=Va)
     expected = cc.charge(Va)
@@ -345,7 +345,7 @@ def test_gauss_2d_coax_ysym():
     Va = 10.0
     x = np.arange(-w, w, dx)
     y = np.arange(0, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     cc = CoaxCapacitor(ri, 1.0, ro - ri)
     V = cc.potential(X, Y, Va=Va)
     expected = cc.charge(Va)
@@ -368,7 +368,7 @@ def test_gauss_2d_coax_xysym():
     Va = 10.0
     x = np.arange(0, w, dx)
     y = np.arange(0, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     cc = CoaxCapacitor(ri, 1.0, ro - ri)
     V = cc.potential(X, Y, Va=Va)
     expected = cc.charge(Va)
@@ -385,12 +385,12 @@ def test_poisson_3d_sphere():
     ri = 2.0e-3
     ro = 4.0e-3
     w = 1.1 * ro
-    N = 51
+    N = 61
     Va = 10.0
     x = np.linspace(-w, w, N)
     y = np.linspace(-w, w, N)
     z = np.linspace(-w, w, N)
-    X, Y, Z = np.meshgrid(x, y, z)
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
     R = np.sqrt(X**2 + Y**2 + Z**2)
     bc_bool = np.logical_or(R < ri, R > ro)
     bc_val = np.select([R < ri, R > ro], [Va, 0])

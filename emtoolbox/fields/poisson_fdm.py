@@ -11,6 +11,22 @@ try:
 except ImportError:
     EPS0 = 8.854e-12
 
+
+@jit()
+def check_arrays_2d(X, Y):
+    if X[1, 0] == X[0, 0] or Y[0, 1] == Y[0, 0]:
+        raise Exception('X and Y must have ij indexing')
+    if abs(abs(X[1, 0] - X[0, 0]) - abs(Y[0, 1] - Y[0, 0])) > 1e-6:
+        raise Exception('X and Y must have the same spacing')
+
+
+@jit()
+def check_arrays_3d(X, Y, Z):
+    if X[1, 0, 0] == X[0, 0, 0] or Y[0, 1, 0] == Y[0, 0, 0] or Z[0, 0, 1] == Z[0, 0, 0]:
+        raise Exception('X, Y and Z must have ij indexing')
+    #TODO check array spacing
+
+
 @jit(nopython=True)
 def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
                dielectric: np.ndarray=None, charge: np.ndarray=None,
@@ -32,6 +48,7 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
     V[1:-1] = 0.5 * (v_left + v_right)  # Initial seed
     nx = len(X)
     if bc is None:
+        # Explicit to prompt numba type
         bc_bool = np.array([False])
         bc_val = np.array([0.0])
     else:
@@ -69,72 +86,70 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                conv: float= 1e-5, Nmax: int=1e5):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
-    if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
-        raise Exception('X and Y must have xy indexing')
-    if abs(abs(X[0, 1] - X[0, 0]) - abs(Y[1, 0] - Y[0, 0])) > 1e-6:
-        raise Exception('X and Y must have the same spacing')
+    check_arrays_2d(X, Y)
     if charge is not None:
         raise Exception('Charge is currently not supported')
     # TODO enforce array types
     V = np.zeros_like(X, dtype='float64')
-    V[:, 0] = v_left
-    V[:, -1] = v_right
-    V[-1, :] = v_top
-    V[0, :] = v_bottom
+    V[0, :] = v_left
+    V[-1, :] = v_right
+    V[:, -1] = v_top
+    V[:, 0] = v_bottom
     V[0, 0] = 0.5 * (v_bottom + v_left)
-    V[0, -1] = 0.5 * (v_bottom + v_right)
-    V[-1, 0] = 0.5 * (v_top + v_left)
+    V[-1, 0] = 0.5 * (v_bottom + v_right)
+    V[0, -1] = 0.5 * (v_top + v_left)
     V[-1, -1] = 0.5 * (v_top + v_right)
     V[1:-1, 1:-1] = 0.25 * (v_bottom + v_right + v_top + v_left)
-    nx = X.shape[1]
-    ny = X.shape[0]
+    nx = X.shape[0]
+    ny = X.shape[1]
     if bc is None:
-        bc_bool = np.array([[False], [False]])
-        bc_val = np.array([[0.0], [0.0]])
+        # Explicit to prompt numba type
+        bc_bool = np.array([[False]])
+        bc_val = np.array([[0.0]])
     else:
         bc_bool, bc_val = bc
         for j in range(ny):
             for i in range(nx):
-                if bc_bool[j, i]:
-                    V[j, i] = bc_val[j, i]
+                if bc_bool[i, j]:
+                    V[i, j] = bc_val[i, j]
     for n in range(int(Nmax)):
         Vsum = 0
         Verr = 0
         if xsym:
             for j in range(1, ny-1):
-                if not bc or not bc_bool[j, 0]:
-                    V[j, 0] = 0.25 * (V[j+1, 0] + V[j-1, 0] + 2*V[j, 1])
+                if not bc or not bc_bool[0, j]:
+                    V[0, j] = 0.25 * (V[0, j+1] + V[0, j-1] + 2*V[1, j])
         if ysym:
             for i in range(1, nx-1):
-                if not bc or not bc_bool[0, i]:
-                    V[0, i] = 0.25 * (V[0, i+1] + V[0, i-1] + 2*V[1, i])
+                if not bc or not bc_bool[i, 0]:
+                    V[i, 0] = 0.25 * (V[i+1, 0] + V[i-1, 0] + 2*V[i, 1])
         for j in range(1, ny-1):
             for i in range(1, nx-1):
-                V_old = V[j, i]
-                if not bc or not bc_bool[j, i]:
+                V_old = V[i, j]
+                if not bc or not bc_bool[i, j]:
                     if dielectric is None:
-                        R = 0.25 * (V[j+1, i] + V[j-1, i] +
-                                    V[j, i+1] + V[j, i-1]) - V_old
+                        R = 0.25 * (V[i+1, j] + V[i-1, j] +
+                                    V[i, j+1] + V[i, j-1]) - V_old
                     else:
-                        er_nw = dielectric[j+1, i]
-                        er_ne = dielectric[j+1, i+1]
-                        er_sw = dielectric[j, i]
-                        er_se = dielectric[j, i+1]
-                        R = (((er_sw + er_nw) * V[j, i-1] +
-                              (er_nw + er_ne) * V[j+1, i] +
-                              (er_ne + er_se) * V[j, i+1] +
-                              (er_se + er_sw) * V[j-1, i]) /
+                        er_nw = dielectric[i, j+1]
+                        er_ne = dielectric[i+1, j+1]
+                        er_sw = dielectric[i, j]
+                        er_se = dielectric[i+1, j]
+                        R = (((er_sw + er_nw) * V[i-1, j] +
+                              (er_nw + er_ne) * V[i, j+1] +
+                              (er_ne + er_se) * V[i+1, j] +
+                              (er_se + er_sw) * V[i, j-1]) /
                              (2 * (er_nw + er_ne + er_sw + er_se))) - V_old
-                    V[j, i] = R * sor + V_old
+                    V[i, j] = R * sor + V_old
                     Verr += abs(R)
-                    Vsum += abs(V[j, i])
+                    Vsum += abs(V[i, j])
         if Vsum > 0 and Verr / Vsum < conv:
             break
     print('2D Error', Verr / Vsum, 'after', n+1, 'iterations')
     return V
 
 
-#@jit(nopython=True)
+@jit(nopython=True)
 def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
                v_left: float=0, v_right: float=0,
                v_top: float=0, v_bottom: float=0,
@@ -144,44 +159,55 @@ def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
                conv: float= 1e-5, Nmax: int=1e5):
     '''Three-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
-    if X[0, 1, 0] == X[0, 0, 0] or Y[1, 0, 0] == Y[0, 0, 0] or Z[0, 0, 1] == Z[0, 0, 0]:
-        raise Exception('X, Y and Z must have xy indexing')
-    if abs(abs(X[0, 0, 1] - X[0, 0, 0]) - abs(Y[0, 1, 0] - Y[0, 0, 0])) > 1e-6:
-        raise Exception('X, Y and Z must have the same spacing')
+    check_arrays_3d(X, Y, Z)
     if charge is not None:
         raise Exception('Charge is currently not supported')
     # TODO enforce array types
-    # TODO verify dimensions/indices
-    # TODO apply boundary conditions
     V = np.zeros_like(X, dtype='float64')
-    nx = X.shape[2]
+    V[0, :, :] = v_back
+    V[-1, :, :] = v_front
+    V[:, 0, :] = v_left
+    V[:, -1, :] = v_right
+    V[:, :, 0] = v_bottom
+    V[:, :, -1] = v_top
+    V[0, 0, 0] = 1/3 * (v_bottom + v_left + v_back)
+    V[-1, 0, 0] = 1/3 * (v_bottom + v_left + v_front)
+    V[0, -1, 0] = 1/3 * (v_bottom + v_right + v_back)
+    V[-1, -1, 0] = 1/3 * (v_bottom + v_right + v_front)
+    V[0, 0, -1] = 1/3 * (v_top + v_left + v_back)
+    V[-1, 0, -1] = 1/3 * (v_top + v_left + v_front)
+    V[0, -1, -1] = 1/3 * (v_top + v_right + v_back)
+    V[-1, -1, -1] = 1/3 * (v_top + v_right + v_front)
+    V[1:-1, 1:-1, 1:-1] = 1/6 * (v_bottom + v_right + v_top + v_left + v_front + v_back)
+    nx = X.shape[0]
     ny = X.shape[1]
-    nz = X.shape[0]
+    nz = X.shape[2]
     if bc is None:
-        bc_bool = np.array([[False], [False]])
-        bc_val = np.array([[0.0], [0.0]])
+        # Explicit to prompt numba type
+        bc_bool = np.array([[[False]]])
+        bc_val = np.array([[[0.0]]])
     else:
         bc_bool, bc_val = bc
         for k in range(nz):
             for j in range(ny):
                 for i in range(nx):
-                    if bc_bool[k, j, i]:
-                        V[k, j, i] = bc_val[k, j, i]
+                    if bc_bool[i, j, k]:
+                        V[i, j, k] = bc_val[i, j, k]
     for n in range(int(Nmax)):
         Vsum = 0
         Verr = 0
         for k in range(1, nz-1):
             for j in range(1, ny-1):
                 for i in range(1, nx-1):
-                    V_old = V[k, j, i]
-                    if not bc or not bc_bool[k, j, i]:
+                    V_old = V[i, j, k]
+                    if not bc or not bc_bool[i, j, k]:
                         if dielectric is None:
-                            R = (V[k, j+1, i] + V[k, j-1, i] +
-                                 V[k, j, i+1] + V[k, j, i-1] + 
-                                 V[k+1, j, i] + V[k-1, j, i]) / 6 - V_old
-                        V[k, j, i] = R * sor + V_old
+                            R = (V[i+1, j, k] + V[i-1, j, k] + 
+                                 V[i, j+1, k] + V[i, j-1, k] +
+                                 V[i, j, k+1] + V[i, j, k-1]) / 6 - V_old
+                        V[i, j, k] = R * sor + V_old
                         Verr += abs(R)
-                        Vsum += abs(V[k, j, i])
+                        Vsum += abs(V[i, j, k])
         if Vsum > 0 and Verr / Vsum < conv:
             break
     print('3D Error', Verr / Vsum, 'after', n+1, 'iterations')
@@ -206,10 +232,7 @@ def gauss_2d(X: np.ndarray, Y: np.ndarray, V: np.ndarray, er: np.ndarray,
     In this case, the left-edge and the bottom-edge are omitted, respectively,
     with the result multiplied by 2 or 4, as appropriate
     Note: charge polarity is positive for V increasing with X or Y'''
-    if X[0, 1] == X[0, 0] or Y[1, 0] == Y[0, 0]:
-        raise Exception('X and Y must have xy indexing')
-    if abs(abs(X[0, 1] - X[0, 0]) - abs(Y[1, 0] - Y[0, 0])) > 1e-6:
-        raise Exception('X and Y must have the same spacing')
+    check_arrays_2d(X, Y)
     qe = 0
     # Top and bottom edges; dV/dy and -dV/dy, 0.5 is due to central-difference
     if yi1 == 0:
@@ -218,8 +241,8 @@ def gauss_2d(X: np.ndarray, Y: np.ndarray, V: np.ndarray, er: np.ndarray,
         h_edges = zip((yi1, yi2), (0.5, -0.5))
     for yi, k in h_edges:
         for xi in range(xi1, xi2+1):
-            qe += k * (er[yi, xi] * V[yi+1, xi] - er[yi-1, xi] * V[yi-1, xi] + 
-                       (er[yi-1, xi] - er[yi, xi]) * V[yi, xi])
+            qe += k * (er[xi, yi] * V[xi, yi+1] - er[xi, yi-1] * V[xi, yi-1] + 
+                       (er[xi, yi-1] - er[xi, yi]) * V[xi, yi])
     # Left and right edges; dV/dx and -dV/dx, 0.5 is due to central-difference
     if xi1 == 0:
         v_edges = [(xi2, -0.5)]
@@ -227,8 +250,8 @@ def gauss_2d(X: np.ndarray, Y: np.ndarray, V: np.ndarray, er: np.ndarray,
         v_edges = zip((xi1, xi2), (0.5, -0.5))
     for xi, k in v_edges:
         for yi in range(yi1, yi2+1):
-            qe += k * (er[yi, xi] * V[yi, xi+1] - er[yi, xi-1] * V[yi, xi-1] + 
-                       (er[yi, xi-1] - er[yi, xi]) * V[yi, xi])
+            qe += k * (er[xi, yi] * V[xi+1, yi] - er[xi-1, yi] * V[xi-1, yi] + 
+                       (er[xi-1, yi] - er[xi, yi]) * V[xi, yi])
     if xi1 == 0:
         qe = 2 * qe # TODO Do not double count point on x-axis
     if yi1 == 0:
@@ -256,7 +279,7 @@ def example_poisson_2d():
     h = 1.0
     x = np.linspace(0, w, 101)
     y = np.linspace(0, h, 51)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     bc = {'v_top': 10, 'v_left': 5}
     V = poisson_2d(X, Y, **bc)
     Va = trough_analytical(X, Y, **bc)
@@ -317,7 +340,7 @@ def example_poisson_2d_coax():
     Va = 10.0
     x = np.arange(0, w, dx)
     y = np.arange(-w, w, dx)
-    X, Y = np.meshgrid(x, y)
+    X, Y = np.meshgrid(x, y, indexing='ij')
     R = np.sqrt(X**2 + Y**2)
     bc_bool = np.logical_or(R < ri, R > ro)
     bc_val = np.select([R < ri, R > ro], [Va, 0])
