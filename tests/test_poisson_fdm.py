@@ -219,6 +219,29 @@ def test_poisson_2d_coax():
     assert potential == approx(expected, abs=0.4)
 
 
+def test_poisson_2d_coax_2layer():
+    ri = 2.0e-3
+    re = 2.8e-3
+    ro = 4.0e-3
+    er1, er2 = 4.0, 1.0
+    w = 1.1 * ro
+    N = 101
+    Va = 10.0
+    x = np.linspace(-w, w, N)
+    y = np.linspace(-w, w, N)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+    R = np.sqrt(X**2 + Y**2)
+    er = np.select([R <= re, R > re], [er1, er2])[:-1, :-1]
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    cc = CoaxCapacitor(ri, (er1, er2), (re - ri, ro - re))
+    expected = cc.potential(X, Y, Va=Va)
+    np.savetxt('e2d.csv', expected, delimiter=',', fmt='%.3f')
+    potential = fdm.poisson_2d(X, Y, dielectric=er, bc=bc, conv=1e-5)
+    assert potential == approx(expected, abs=0.6)
+
+
 def test_poisson_2d_dielectric():
     w = 2.0
     h = 1.0
@@ -398,4 +421,27 @@ def test_poisson_3d_sphere():
     sc = SphereCapacitor(ri, 1.0, ro - ri)
     expected = sc.potential(X, Y, Z, Va=Va)
     potential = fdm.poisson_3d(X, Y, Z, bc=bc, conv=1e-5)
+    assert potential == approx(expected, abs=0.8)
+
+
+def test_poisson_3d_sphere_2layer():
+    ri = 2.0e-3
+    re = 2.8e-3
+    ro = 4.0e-3
+    er1, er2 = 4.0, 1.0
+    w = 1.1 * ro
+    N = 61
+    Va = 10.0
+    x = np.linspace(-w, w, N)
+    y = np.linspace(-w, w, N)
+    z = np.linspace(-w, w, N)
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    R = np.sqrt(X**2 + Y**2 + Z**2)
+    er = np.select([R <= re, R > re], [er1, er2])[:-1, :-1, :-1]
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    sc = SphereCapacitor(ri, (er1, er2), (re - ri, ro - re))
+    expected = sc.potential(X, Y, Z, Va=Va)
+    potential = fdm.poisson_3d(X, Y, Z, dielectric=er, bc=bc, conv=1e-7)
     assert potential == approx(expected, abs=0.8)

@@ -205,6 +205,22 @@ def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
                             R = (V[i+1, j, k] + V[i-1, j, k] + 
                                  V[i, j+1, k] + V[i, j-1, k] +
                                  V[i, j, k+1] + V[i, j, k-1]) / 6 - V_old
+                        else:
+                            er_brb = dielectric[i, j+1, k]
+                            er_frb = dielectric[i+1, j+1, k]
+                            er_blb = dielectric[i, j, k]
+                            er_flb = dielectric[i+1, j, k]
+                            er_brt = dielectric[i, j+1, k+1]
+                            er_frt = dielectric[i+1, j+1, k+1]
+                            er_blt = dielectric[i, j, k+1]
+                            er_flt = dielectric[i+1, j, k+1]
+                            R = (((er_brb + er_blb + er_brt + er_blt) * V[i-1, j, k] +
+                                (er_frb + er_flb + er_frt + er_flt) * V[i+1, j, k] +
+                                (er_blb + er_flb + er_blt + er_flt) * V[i, j-1, k] +
+                                (er_brb + er_frb + er_brt + er_frt) * V[i, j+1, k] +
+                                (er_brb + er_frb + er_blb + er_flb) * V[i, j, k-1] +
+                                (er_brt + er_frt + er_blt + er_flt) * V[i, j, k+1]) /
+                                (3 * (er_brb + er_frb + er_blb + er_flb + er_brt + er_frt + er_blt + er_flt))) - V_old
                         V[i, j, k] = R * sor + V_old
                         Verr += abs(R)
                         Vsum += abs(V[i, j, k])
