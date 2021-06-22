@@ -369,7 +369,44 @@ def example_poisson_2d_coax():
     plt.show()
 
 
+def example_poisson_3d():
+    ri = 2.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    dx = ri / 16
+    Va = 10.0
+    x = np.arange(-w, w, dx)
+    y = np.arange(-w, w, dx)
+    z = np.arange(-w, w, dx)
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    R = np.sqrt(X**2 + Y**2 + Z**2)
+    bc_bool = np.logical_and(R < ri, X < 0.0)
+    bc_val = bc_bool * Va
+    bc = (bc_bool, bc_val)
+    V = poisson_3d(X, Y, Z, v_front=-Va, v_left=-Va, bc=bc)
+    _, axs = plt.subplots(1, 3)
+    axs[0].contour(X[:, :, int(len(z)/2)], Y[:, :, int(len(z)/2)], V[:, :, int(len(z)/2)])
+    axs[0].set_title('Top View')
+    axs[0].set_xlabel('x')
+    axs[0].set_ylabel('y')
+    axs[1].contour(X[:, int(len(y)/2), :], Z[:, int(len(y)/2), :], V[:, int(len(y)/2), :])
+    axs[1].set_title('Front View')
+    axs[1].set_xlabel('x')
+    axs[1].set_ylabel('z')
+    axs[2].contour(Y[int(len(x)/2), :, :], Z[int(len(x)/2), :, :], V[int(len(x)/2), :, :])
+    axs[2].set_title('Right View')
+    axs[2].set_xlabel('y')
+    axs[2].set_ylabel('z')
+    for ax in axs.ravel():
+        ax.set_aspect('equal')
+        ax.xaxis.set_major_locator(mpl.ticker.NullLocator())
+        ax.yaxis.set_major_locator(mpl.ticker.NullLocator())
+        ax.grid()
+    plt.show()
+
+
 if __name__ == '__main__':
     example_poisson_2d()
     example_parallel_plates()
     example_poisson_2d_coax()
+    example_poisson_3d()
