@@ -13,11 +13,23 @@ except ImportError:
 
 
 @jit()
-def check_arrays_2d(X, Y):
+def check_arrays_1d(X, er=None):
+    if er is not None:
+        if er.shape[0] != X.shape[0] - 1:
+            raise Exception('X shape must be one larger than er')
+
+
+@jit()
+def check_arrays_2d(X, Y, er=None):
+    if X.shape != Y.shape:
+        raise Exception('X and Y shape must identical')
     if X[1, 0] == X[0, 0] or Y[0, 1] == Y[0, 0]:
         raise Exception('X and Y must have ij indexing')
     if abs(abs(X[1, 0] - X[0, 0]) - abs(Y[0, 1] - Y[0, 0])) > 1e-6:
         raise Exception('X and Y must have the same spacing')
+    if er is not None:
+        if er.shape[0] != X.shape[0] - 1 or er.shape[1] != X.shape[1] - 1:
+            raise Exception('X and Y shape must be one larger than er')
 
 
 @jit()
@@ -39,6 +51,7 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
            e0    e1  ...  en-1   [one less point]
     Boundary condition is to be provided as a (bool array, value array) matching X
     Where the condition is X[bool] = value'''
+    check_arrays_1d(X, dielectric)
     if charge is not None:
         raise Exception('Charge is currently not supported')
     # TODO enforce array types
@@ -86,7 +99,7 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                conv: float= 1e-5, Nmax: int=1e5):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
-    check_arrays_2d(X, Y)
+    check_arrays_2d(X, Y, dielectric)
     if charge is not None:
         raise Exception('Charge is currently not supported')
     # TODO enforce array types
@@ -131,10 +144,10 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
                         R = 0.25 * (V[i+1, j] + V[i-1, j] +
                                     V[i, j+1] + V[i, j-1]) - V_old
                     else:
-                        er_nw = dielectric[i, j+1]
-                        er_ne = dielectric[i+1, j+1]
-                        er_sw = dielectric[i, j]
-                        er_se = dielectric[i+1, j]
+                        er_nw = dielectric[i-1, j]
+                        er_ne = dielectric[i, j]
+                        er_sw = dielectric[i-1, j-1]
+                        er_se = dielectric[i, j-1]
                         R = (((er_sw + er_nw) * V[i-1, j] +
                               (er_nw + er_ne) * V[i, j+1] +
                               (er_ne + er_se) * V[i+1, j] +
@@ -196,6 +209,21 @@ def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
     for n in range(int(Nmax)):
         Vsum = 0
         Verr = 0
+        if xsym:
+            for k in range(1, nz-1):
+                for j in range(1, ny-1):
+                    if not bc or not bc_bool[0, j, k]:
+                        V[0, j, k] = 1/6 * (V[0, j+1, k] + V[0, j-1, k] + V[0, j, k+1] + V[0, j, k-1] + 2*V[1, j, k])
+        if ysym:
+            for k in range(1, nz-1):
+                for i in range(1, nx-1):
+                    if not bc or not bc_bool[i, 0, k]:
+                        V[i, 0, k] = 1/6 * (V[i+1, 0, k] + V[i-1, 0, k] + V[i, 0, k+1] + V[i, 0, k-1] + 2*V[i, 1, k])
+        if zsym:
+            for j in range(1, ny-1):
+                for i in range(1, nx-1):
+                    if not bc or not bc_bool[i, j, 0]:
+                        V[i, j, 0] = 1/6 * (V[i+1, j, 0] + V[i-1, j, 0] + V[i, j+1, 0] + V[i, j-1, 0] + 2*V[i, j, 1])
         for k in range(1, nz-1):
             for j in range(1, ny-1):
                 for i in range(1, nx-1):
@@ -206,14 +234,14 @@ def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
                                  V[i, j+1, k] + V[i, j-1, k] +
                                  V[i, j, k+1] + V[i, j, k-1]) / 6 - V_old
                         else:
-                            er_brb = dielectric[i, j+1, k]
-                            er_frb = dielectric[i+1, j+1, k]
-                            er_blb = dielectric[i, j, k]
-                            er_flb = dielectric[i+1, j, k]
-                            er_brt = dielectric[i, j+1, k+1]
-                            er_frt = dielectric[i+1, j+1, k+1]
-                            er_blt = dielectric[i, j, k+1]
-                            er_flt = dielectric[i+1, j, k+1]
+                            er_brb = dielectric[i-1, j, k-1]
+                            er_frb = dielectric[i, j, k-1]
+                            er_blb = dielectric[i-1, j-1, k-1]
+                            er_flb = dielectric[i, j-1, k-1]
+                            er_brt = dielectric[i-1, j, k]
+                            er_frt = dielectric[i, j, k]
+                            er_blt = dielectric[i-1, j-1, k]
+                            er_flt = dielectric[i, j-1, k]
                             R = (((er_brb + er_blb + er_brt + er_blt) * V[i-1, j, k] +
                                 (er_frb + er_flb + er_frt + er_flt) * V[i+1, j, k] +
                                 (er_blb + er_flb + er_blt + er_flt) * V[i, j-1, k] +

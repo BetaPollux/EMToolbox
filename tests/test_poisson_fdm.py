@@ -7,7 +7,7 @@ from emtoolbox.fields.spherecap import SphereCapacitor
 import emtoolbox.fields.poisson_fdm as fdm
 import pytest
 from pytest import approx
-
+import matplotlib.pyplot as plt
 
 def test_trough_analytical():
     w = 3.0
@@ -54,6 +54,15 @@ def test_poisson_1d_dielectric2():
     assert V == approx(Va, abs=0.01)
 
 
+def test_poisson_1d_unity_dielectric():
+    X = np.linspace(0, 5, 11)
+    er = np.ones_like(X[1:])
+    v0 = 10
+    V = fdm.poisson_1d(X, v_left=v0, conv=1e-7)
+    Ver = fdm.poisson_1d(X, dielectric=er, v_left=v0, conv=1e-7)
+    assert V == approx(Ver)
+
+
 def test_poisson_2d():
     w = 2.0
     h = 1.0
@@ -65,6 +74,17 @@ def test_poisson_2d():
     Va = fdm.trough_analytical(X, Y, **bc)
     # Exclude boundaries due to analytical error at corners
     assert V[1:-1, 1:-1] == approx(Va[1:-1, 1:-1], abs=0.1)  
+
+
+def test_poisson_2d_unity_dielectric():
+    x = np.linspace(0, 5, 11)
+    y = np.linspace(0, 5, 11)
+    X, Y = np.meshgrid(x, y, indexing='ij')
+    er = np.ones_like(X[1:, 1:])
+    v0 = 10
+    V = fdm.poisson_2d(X, Y, v_left=v0, conv=1e-7)
+    Ver = fdm.poisson_2d(X, Y, dielectric=er, v_left=v0, conv=1e-7)
+    assert V == approx(Ver)
 
 
 def test_poisson_2d_indexing():
@@ -404,15 +424,28 @@ def test_gauss_2d_coax_xysym():
     assert gauss == approx(expected, rel=0.01, abs=1e-14)
 
 
+def test_poisson_3d_unity_dielectric():
+    x = np.linspace(0, 5, 11)
+    y = np.linspace(0, 5, 11)
+    z = np.linspace(0, 5, 11)
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    er = np.ones_like(X[1:, 1:, 1:])
+    v0 = 10
+    V = fdm.poisson_3d(X, Y, Z, v_left=v0, conv=1e-7)
+    Ver = fdm.poisson_3d(X, Y, Z, dielectric=er, v_left=v0, conv=1e-7)
+    assert V == approx(Ver)
+
+
 def test_poisson_3d_sphere():
     ri = 2.0e-3
     ro = 4.0e-3
     w = 1.1 * ro
     N = 61
+    dx = 2 * w / N
     Va = 10.0
-    x = np.linspace(-w, w, N)
-    y = np.linspace(-w, w, N)
-    z = np.linspace(-w, w, N)
+    x = np.arange(-w, w, dx)
+    y = np.arange(-w, w, dx)
+    z = np.arange(-w, w, dx)
     X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
     R = np.sqrt(X**2 + Y**2 + Z**2)
     bc_bool = np.logical_or(R < ri, R > ro)
@@ -431,10 +464,11 @@ def test_poisson_3d_sphere_2layer():
     er1, er2 = 4.0, 1.0
     w = 1.1 * ro
     N = 61
+    dx = 2 * w / N
     Va = 10.0
-    x = np.linspace(-w, w, N)
-    y = np.linspace(-w, w, N)
-    z = np.linspace(-w, w, N)
+    x = np.arange(-w, w, dx)
+    y = np.arange(-w, w, dx)
+    z = np.arange(-w, w, dx)
     X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
     R = np.sqrt(X**2 + Y**2 + Z**2)
     er = np.select([R <= re, R > re], [er1, er2])[:-1, :-1, :-1]
@@ -445,3 +479,37 @@ def test_poisson_3d_sphere_2layer():
     expected = sc.potential(X, Y, Z, Va=Va)
     potential = fdm.poisson_3d(X, Y, Z, dielectric=er, bc=bc, conv=1e-7)
     assert potential == approx(expected, abs=0.8)
+
+
+@pytest.mark.parametrize(
+    "xsym, ysym, zsym",
+    [
+        (False, False, False),
+        (True, False, False),
+        (False, True, False),
+        (True, True, False),    #TODO xy sym fails
+        (False, False, True),
+        (True, False, True),    #TODO xz sym fails
+        (False, True, True),    #TODO yz sym fails
+        (True, True, True)      #TODO xyz sym fails
+    ],
+)
+def test_poisson_3d_sphere_sym(xsym, ysym, zsym):
+    ri = 2.0e-3
+    ro = 4.0e-3
+    w = 1.1 * ro
+    N = 61
+    dx = 2 * w / N
+    Va = 10.0
+    x = np.arange(-w * (not xsym), w, dx)
+    y = np.arange(-w * (not ysym), w, dx)
+    z = np.arange(-w * (not zsym), w, dx)
+    X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+    R = np.sqrt(X**2 + Y**2 + Z**2)
+    bc_bool = np.logical_or(R < ri, R > ro)
+    bc_val = np.select([R < ri, R > ro], [Va, 0])
+    bc = (bc_bool, bc_val)
+    sc = SphereCapacitor(ri, 1.0, ro - ri)
+    expected = sc.potential(X, Y, Z, Va=Va)
+    potential = fdm.poisson_3d(X, Y, Z, bc=bc, conv=1e-5, xsym=xsym, ysym=ysym, zsym=zsym)
+    assert potential == approx(expected, abs=0.9)
