@@ -45,7 +45,7 @@ class WireMtl():
             dx = fdm_params.get('dx', min(r0, r1) / 6)
             x = np.arange(w_list.min(), w_list.max(), dx)
             y = np.arange(h_list.min(), h_list.max(), dx)
-            X, Y = np.meshgrid(x, y)
+            X, Y = np.meshgrid(x, y, indexing='ij')
             print(f'{x.max() - x.min():.3e}, {y.max() - y.min():.3e} dimensions')
             print(f'{X.shape}, {dx:.3e} grid')
             print(f'{X.size} points')
