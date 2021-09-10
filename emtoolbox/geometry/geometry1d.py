@@ -82,8 +82,7 @@ class Rect(Shape):
         return self.left + self.width
 
     def hit(self, x) -> bool:
-        inside = x >= self.left and x <= self.left + self.width
-        return inside
+        return x >= self.left and x <= self.right
 
 
 if __name__ == '__main__':
@@ -98,12 +97,15 @@ if __name__ == '__main__':
     geom.add_child(rectn)
     geom.add_child(rectp2)
 
-    N = 51
-    grid = geom.grid(N)
-    b = geom.mask(grid)
-    e = geom.select('er', grid)
-    x = geom.grid(N, edges=False)
-
-    plt.plot(x, b)
-    plt.plot(x, e)
+    N = 9
+    x = geom.grid(N)
+    y = np.array([0.0, 1.0])
+    X, Y = np.meshgrid(x, y, indexing='ij')
+    b = geom.mask(x)
+    e = geom.select('er', x)
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+    ax1.pcolor(X, Y, b[:, np.newaxis], shading='auto')
+    ax1.set_ylabel('Mask')
+    ax2.pcolor(X, Y, e[:, np.newaxis], shading='auto')
+    ax2.set_ylabel('er')
     plt.show()
