@@ -16,6 +16,7 @@ from emtoolbox.tline.lossless_mtl import LosslessMtl
 DEFAULT_RS = 3e-3
 DEFAULT_RW = 0.5e-3
 
+
 class MtlEditor(wx.Dialog):
     '''An editor window for configuring the MTL and cross section'''
     def __init__(self, parent=None, title: str = 'MtlEditor', size=(640, 480)):
@@ -31,7 +32,7 @@ class MtlEditor(wx.Dialog):
 
         self.grid = wx.grid.Grid(self)
         self.grid.CreateGrid(10, 3)
-        col_labels = ['x', 'y','radius']
+        col_labels = ['x', 'y', 'radius']
         for i, lbl in enumerate(col_labels):
             self.grid.SetColLabelValue(i, lbl)
 
@@ -68,7 +69,7 @@ class MtlEditor(wx.Dialog):
             self.update_canvas(self.get_mtl())
         except ValueError:
             pass
-    
+
     def OnPlot(self, event):
         mtl = LosslessMtl(self.get_mtl())
         plotter = MtlPlotter(mtl, parent_window=self)

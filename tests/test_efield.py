@@ -57,4 +57,3 @@ def test_efield_pplate_fdm():
     Vfdm = fdm.poisson_1d(X, dielectric=er, v_right=Va)
     Efdm = em.efield_1d(Vfdm, dx)
     assert Efdm == approx(E, rel=0.001)
-

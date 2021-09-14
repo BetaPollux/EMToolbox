@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 class Wire():
     '''Wire with a given location and radius'''
     def __init__(self, x: float, y: float, radius: float):
@@ -10,11 +11,11 @@ class Wire():
         self.x = x
         self.y = y
         self.radius = radius
-    
+
     def distance_to(self, wire):
         '''Center-to-center distance between wires'''
         return np.sqrt((self.x - wire.x)**2 + (self.y - wire.y)**2)
-    
+
     def gap_to(self, wire):
         '''Gap between external wire surfaces'''
         return self.distance_to(wire) - self.radius - wire.radius
@@ -22,7 +23,7 @@ class Wire():
     def angle_to(self, wire):
         '''Angle in radians from self to other wire, with CCW being positive'''
         return np.arctan2(wire.y, wire.x) - np.arctan2(self.y, self.x)
-    
+
     def offset(self, x: float = 0, y: float = 0):
         '''Offset from position'''
         return np.sqrt((self.x - x)**2 + (self.y - y)**2)

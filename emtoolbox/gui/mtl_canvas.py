@@ -14,6 +14,7 @@ from emtoolbox.utils.constants import RGB_CU, RGB_DIEL
 
 BG_COLOR = '#e1e1a1'
 
+
 class MtlCanvas(wx.Window):
     def __init__(self, parent, size=(80, 80)):
         wx.Window.__init__(self, parent, size=size)
@@ -45,10 +46,10 @@ class MtlCanvas(wx.Window):
             self.ax.add_patch(shape)
         self.ax.autoscale_view()
         self.ax.set_aspect(1)
-    
+
     def clear_shapes(self):
         self.ax.cla()
-    
+
     def redraw(self):
         self.figure.canvas.draw()
 
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     class MtlCanvasFrame(wx.Frame):
         def __init__(self, parent):
             wx.Frame.__init__(self, parent, -1, "Mtl Canvas Frame",
-                    size=(800,600))
+                              size=(800, 600))
             self.canvas = MtlCanvas(self)
 
     app = wx.App(redirect=False)

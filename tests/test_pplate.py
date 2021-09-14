@@ -129,6 +129,7 @@ def test_energy():
     expected = 0.5 * pp.capacitance() * Va ** 2
     assert pp.energy(Va) == approx(expected)
 
+
 def test_2layer_area():
     er1, t1 = 5.0, 1e-3
     er2, t2 = 1.0, 3e-3

@@ -8,6 +8,7 @@ from scipy.special import jv, jvp, hankel2
 
 N0 = 40
 
+
 def cyl_wave(R, phi, wavelength, E0=1.0, N=N0):
     '''Cylindrical wave polarized in Z-direction'''
     Ez = 0
@@ -39,15 +40,15 @@ def scatter_dielectric_cylinder(R, phi, wavelength, radius, er=1.0, ur=1.0, E0=1
         hn2 = hankel2(n, k*a)
         dr = 0.001 * k*a
         hn2p = (hankel2(n, k*a + dr) - hankel2(n, k*a - dr)) / (2 * dr)
-        
+
         an_n = np.sqrt(ur) * jvp(n, k*a) * jv(n, kd*a) - np.sqrt(er) * jv(n, k*a) * jvp(n, kd*a)
         an_d = np.sqrt(ur) * hn2p * jv(n, kd*a) - np.sqrt(er) * hn2 * jvp(n, kd * a)
-        an =  -(1.j)**-n * an_n / an_d
+        an = -(1.j)**-n * an_n / an_d
         Ezs += E0 * an * hankel2(n, k*R) * np.exp(1.j*n*phi)
-        
+
         cn_n = 2 * np.sqrt(ur)
         cn_d = np.sqrt(ur) * hn2p * jv(n, kd*a) - np.sqrt(er) * hn2 * jvp(n, kd*a)
-        cn =  (1.j)**-(n+1) / (np.pi * k * a) * cn_n / cn_d
+        cn = (1.j)**-(n+1) / (np.pi * k * a) * cn_n / cn_d
         Ezint += E0 * cn * jv(n, kd*R) * np.exp(1.j*n*phi)
     Ezs[R < a] = Ezint[R < a]
     return Ezint, Ezs
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     X, Y = np.meshgrid(x, y)
     R = np.sqrt(X**2 + Y**2)
     phi = np.arctan2(Y, X)
-    
+
     Ezi = cyl_wave(R, phi, wavelength)
 
     Ezs = scatter_conducting_cylinder(R, phi, wavelength, r_cyl)
@@ -87,12 +88,12 @@ if __name__ == '__main__':
     plot_cyl_wave(axs[0], X, Y, Ezi, 'Incident', norm=norm)
     plot_cyl_wave(axs[1], X, Y, Ezs, 'Scattered', norm=norm)
     plot_cyl_wave(axs[2], X, Y, Et, 'Total', norm=norm)
-    
+
     fig, axs = plt.subplots(ncols=3)
     fig.suptitle(f'Scattering by Dielectric Cylinder\n$\epsilon_r$ = {er}')
     norm = mpl.colors.Normalize(vmin=-2, vmax=2)
     plot_cyl_wave(axs[0], X, Y, Ezi, 'Incident', norm=norm)
     plot_cyl_wave(axs[1], X, Y, Ezsd, 'Scattered', norm=norm)
     plot_cyl_wave(axs[2], X, Y, Etd, 'Total', norm=norm)
-    
+
     plt.show()

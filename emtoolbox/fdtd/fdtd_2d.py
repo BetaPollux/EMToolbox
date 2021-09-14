@@ -23,7 +23,7 @@ class Grid2D:
         self.ndy = len(self.y)
         self.scattered_boundary = 7
         self.dt = min(self.cellsize_x, self.cellsize_y) / (2 * 3e8)
-        
+
         self.dz = np.zeros((self.ndx, self.ndy))
         self.ez = np.zeros((self.ndx, self.ndy))
         self.iz = np.zeros((self.ndx, self.ndy))
@@ -31,25 +31,25 @@ class Grid2D:
         self.hy = np.zeros((self.ndx, self.ndy))
         self.ihx = np.zeros((self.ndx, self.ndy))
         self.ihy = np.zeros((self.ndx, self.ndy))
-        
+
         self.ez_inc = np.zeros(self.ndy)
         self.hx_inc = np.zeros(self.ndy)
-        
+
         self.ga = np.ones((self.ndx, self.ndy))
         self.gb = np.zeros((self.ndx, self.ndy))
-        
+
         self.gi2 = np.ones(self.ndx)
         self.gi3 = np.ones(self.ndx)
         self.fi1 = np.zeros(self.ndx)
         self.fi2 = np.ones(self.ndx)
         self.fi3 = np.ones(self.ndx)
-        
+
         self.gj2 = np.ones(self.ndy)
         self.gj3 = np.ones(self.ndy)
         self.fj1 = np.zeros(self.ndy)
         self.fj2 = np.ones(self.ndy)
         self.fj3 = np.ones(self.ndy)
-        
+
         self.sources = []
         self.plane_sources = []
         self.probes = []
@@ -71,7 +71,7 @@ class Grid2D:
             xn = 0.33 * (xxn ** 3)
             self.gi2[n] = self.gi2[-1-n] = 1.0 / (1.0 + xn)
             self.gi3[n] = self.gi3[-1-n] = (1.0 - xn) / (1.0 + xn)
-            
+
             self.gj2[n] = self.gj2[-1-n] = 1.0 / (1.0 + xn)
             self.gj3[n] = self.gj3[-1-n] = (1.0 - xn) / (1.0 + xn)
 
@@ -333,7 +333,7 @@ def main():
     # source = SinusoidalGauss(src_pos, 'Sine-Gauss 1 GHz', 5e8, 2e9)
     # source = Gaussian(src_pos, 'PlaneGaussian', 1.0, 20 * grid.dt, 8 * grid.dt)
     grid.add_plane_source(source)
-    #grid.add_source(Gaussian((0.1, 0.1), 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt))
+    # grid.add_source(Gaussian((0.1, 0.1), 'Gaussian', 1.0, 20 * grid.dt, 6 * grid.dt))
     grid.add_probe(Probe((x0, 0.2), 'Front'))
     grid.add_probe(Probe((x0, y0), 'Middle'))
     grid.add_probe(Probe((x0, 0.9), 'Behind'))

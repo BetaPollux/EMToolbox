@@ -8,8 +8,9 @@ from emtoolbox.tline.tline import TLine, TerminatedTLine
 from emtoolbox.gui.plot_frame import PlotFrame
 from emtoolbox.utils.constants import CHR_OHM
 
-#TODO replace with an MtlPlotter class
-#TODO create new MtlNetworkSolver class
+# TODO replace with an MtlPlotter class
+# TODO create new MtlNetworkSolver class
+
 
 def solve(inputs: dict, parent_window=None) -> dict:
     zs = float(inputs.get('source_z', 50))

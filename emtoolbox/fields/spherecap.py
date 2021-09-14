@@ -81,4 +81,3 @@ class SphereCapacitor:
 
     def energy(self, Va):
         return 0.5 * self.capacitance() * Va ** 2
- 

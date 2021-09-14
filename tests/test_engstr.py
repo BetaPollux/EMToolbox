@@ -4,6 +4,7 @@ import pytest
 from pytest import approx
 from emtoolbox.utils.conversions import engfloat, engstr
 
+
 @pytest.mark.parametrize(
     "num, prec, result",
     [
@@ -21,6 +22,7 @@ from emtoolbox.utils.conversions import engfloat, engstr
 )
 def test_engstr(num, prec, result):
     assert engstr(num, precision=prec) == result
+
 
 @pytest.mark.parametrize(
     "num, result",

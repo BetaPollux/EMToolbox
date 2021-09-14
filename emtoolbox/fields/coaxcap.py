@@ -74,7 +74,7 @@ class CoaxCapacitor:
         Qs = self.charge(Va) / (2 * np.pi * self.length)
         for er, t, x0 in self.sheaths:
             condlist.insert(-1, R <= x0 + t)
-            choicelist.insert(-1, V0 - Qs / (er * EPS0) * np.log(R / x0, where=R>0))
+            choicelist.insert(-1, V0 - Qs / (er * EPS0) * np.log(R / x0, where=R > 0))
             V0 -= Qs / (er * EPS0) * np.log((x0 + t) / x0)
         return np.select(condlist, choicelist)
 
@@ -83,4 +83,3 @@ class CoaxCapacitor:
 
     def energy(self, Va):
         return 0.5 * self.capacitance() * Va ** 2
- 

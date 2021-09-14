@@ -10,7 +10,7 @@ class MtlPlotter():
         self.tline = tline
         self.plot_frame = PlotFrame(parent=parent_window)
         self.init_plot_frame(self.tline, self.plot_frame)
-    
+
     def init_plot_frame(self, tline, frame):
         f = np.logspace(2, 9, 201)
         zc = tline.char_impedance() * np.ones_like(f)
@@ -32,7 +32,6 @@ class MtlPlotter():
                 page.plot(f, y_data, label=label)
             page.set_legend()
             page.set_grid()
-    
+
     def Show(self, show=True):
         self.plot_frame.Show(show)
-

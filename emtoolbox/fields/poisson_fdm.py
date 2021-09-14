@@ -36,14 +36,14 @@ def check_arrays_2d(X, Y, er=None):
 def check_arrays_3d(X, Y, Z):
     if X[1, 0, 0] == X[0, 0, 0] or Y[0, 1, 0] == Y[0, 0, 0] or Z[0, 0, 1] == Z[0, 0, 0]:
         raise Exception('X, Y and Z must have ij indexing')
-    #TODO check array spacing
+    # TODO check array spacing
 
 
 @jit(nopython=True)
-def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
-               dielectric: np.ndarray=None, charge: np.ndarray=None,
-               bc: list=None, sor=1.8,
-               conv: float= 1e-5, Nmax: int=1e5):
+def poisson_1d(X: np.ndarray, /, v_left: float = 0, v_right: float = 0,
+               dielectric: np.ndarray = None, charge: np.ndarray = None,
+               bc: list = None, sor=1.8,
+               conv: float = 1e-5, Nmax: int = 1e5):
     '''One-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument
     Dielectric is an array of relative permittivity, located at half-grid points
@@ -92,11 +92,11 @@ def poisson_1d(X: np.ndarray, /, v_left: float=0, v_right: float=0,
 
 @jit(nopython=True)
 def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
-               v_left: float=0, v_right: float=0,
-               v_top: float=0, v_bottom: float=0,
-               dielectric: np.ndarray=None, charge: np.ndarray=None,
-               bc: list=None, sor=1.8, xsym: bool=False, ysym: bool=False,
-               conv: float= 1e-5, Nmax: int=1e5):
+               v_left: float = 0, v_right: float = 0,
+               v_top: float = 0, v_bottom: float = 0,
+               dielectric: np.ndarray = None, charge: np.ndarray = None,
+               bc: list = None, sor=1.8, xsym: bool = False, ysym: bool = False,
+               conv: float = 1e-5, Nmax: int = 1e5):
     '''Two-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
     check_arrays_2d(X, Y, dielectric)
@@ -164,12 +164,13 @@ def poisson_2d(X: np.ndarray, Y: np.ndarray, /,
 
 @jit(nopython=True)
 def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
-               v_left: float=0, v_right: float=0,
-               v_top: float=0, v_bottom: float=0,
-               v_front: float=0, v_back: float=0,
-               dielectric: np.ndarray=None, charge: np.ndarray=None,
-               bc: list=None, sor=1.8, xsym: bool=False, ysym: bool=False, zsym: bool=False,
-               conv: float= 1e-5, Nmax: int=1e5):
+               v_left: float = 0, v_right: float = 0,
+               v_top: float = 0, v_bottom: float = 0,
+               v_front: float = 0, v_back: float = 0,
+               dielectric: np.ndarray = None, charge: np.ndarray = None,
+               bc: list = None, sor: float = 1.8,
+               xsym: bool = False, ysym: bool = False, zsym: bool = False,
+               conv: float = 1e-5, Nmax: int = 1e5):
     '''Three-dimension Poisson equation with fixed potential boundaries.
     Normalized charge density ps/eps can be provided via the charge argument'''
     check_arrays_3d(X, Y, Z)
@@ -230,7 +231,7 @@ def poisson_3d(X: np.ndarray, Y: np.ndarray, Z: np.ndarray, /,
                     V_old = V[i, j, k]
                     if not bc or not bc_bool[i, j, k]:
                         if dielectric is None:
-                            R = (V[i+1, j, k] + V[i-1, j, k] + 
+                            R = (V[i+1, j, k] + V[i-1, j, k] +
                                  V[i, j+1, k] + V[i, j-1, k] +
                                  V[i, j, k+1] + V[i, j, k-1]) / 6 - V_old
                         else:
@@ -263,7 +264,7 @@ def gauss_1d(X: np.ndarray, V: np.ndarray, er: np.ndarray, i: int):
     Evaluated at array index i
     Note: charge polarity is positive for V increasing with X'''
     dx = X[i+1] - X[i-1]
-    return EPS0 * (er[i] * V[i+1] - er[i-1] * V[i-1] + 
+    return EPS0 * (er[i] * V[i+1] - er[i-1] * V[i-1] +
                    (er[i-1] - er[i]) * V[i]) / dx
 
 
@@ -285,7 +286,7 @@ def gauss_2d(X: np.ndarray, Y: np.ndarray, V: np.ndarray, er: np.ndarray,
         h_edges = zip((yi1, yi2), (0.5, -0.5))
     for yi, k in h_edges:
         for xi in range(xi1, xi2+1):
-            qe += k * (er[xi, yi] * V[xi, yi+1] - er[xi, yi-1] * V[xi, yi-1] + 
+            qe += k * (er[xi, yi] * V[xi, yi+1] - er[xi, yi-1] * V[xi, yi-1] +
                        (er[xi, yi-1] - er[xi, yi]) * V[xi, yi])
     # Left and right edges; dV/dx and -dV/dx, 0.5 is due to central-difference
     if xi1 == 0:
@@ -294,18 +295,18 @@ def gauss_2d(X: np.ndarray, Y: np.ndarray, V: np.ndarray, er: np.ndarray,
         v_edges = zip((xi1, xi2), (0.5, -0.5))
     for xi, k in v_edges:
         for yi in range(yi1, yi2+1):
-            qe += k * (er[xi, yi] * V[xi+1, yi] - er[xi-1, yi] * V[xi-1, yi] + 
+            qe += k * (er[xi, yi] * V[xi+1, yi] - er[xi-1, yi] * V[xi-1, yi] +
                        (er[xi-1, yi] - er[xi, yi]) * V[xi, yi])
     if xi1 == 0:
-        qe = 2 * qe # TODO Do not double count point on x-axis
+        qe = 2 * qe  # TODO Do not double count point on x-axis
     if yi1 == 0:
-        qe = 2 * qe # TODO Do not double count point on y-axis
+        qe = 2 * qe  # TODO Do not double count point on y-axis
     return EPS0 * qe
 
 
 def trough_analytical(X: np.ndarray, Y: np.ndarray,
-                      v_left: float=0, v_right: float=0,
-                      v_top: float=0, v_bottom: float=0):
+                      v_left: float = 0, v_right: float = 0,
+                      v_top: float = 0, v_bottom: float = 0):
     a = X.max() - X.min()
     b = Y.max() - Y.min()
     V = np.zeros_like(X)

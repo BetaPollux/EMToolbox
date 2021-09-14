@@ -12,11 +12,14 @@ L2 N003 N002 0.4µ
 .end
 '''
 
+
 def node_str(num: int) -> str:
     return f'N{num:05d}'
 
+
 def model_str(name: str, num: int, value: float, nodes: tuple) -> str:
     return f'{name}{num:03d} {node_str(nodes[0])} {node_str(nodes[1])} {value:.5e}\n'
+
 
 def get_pi_model(name: str, per_unit: dict, length: float, n_segments: int) -> str:
     inductance = per_unit.get('l', None)
@@ -58,6 +61,7 @@ def get_pi_model(name: str, per_unit: dict, length: float, n_segments: int) -> s
             result += model_str('RP', i+1, rval, (n, ref_node))
     result += f'.ENDS {name}\n'
     return result
+
 
 if __name__ == '__main__':
     print(model_str('LS', 32, 1.6e-6, (1, 2)))

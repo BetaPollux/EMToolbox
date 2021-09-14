@@ -9,6 +9,7 @@ import pytest
 from pytest import approx
 import matplotlib.pyplot as plt
 
+
 def test_trough_analytical():
     w = 3.0
     h = 4.0
@@ -73,7 +74,7 @@ def test_poisson_2d():
     V = fdm.poisson_2d(X, Y, **bc, conv=1e-5)
     Va = fdm.trough_analytical(X, Y, **bc)
     # Exclude boundaries due to analytical error at corners
-    assert V[1:-1, 1:-1] == approx(Va[1:-1, 1:-1], abs=0.1)  
+    assert V[1:-1, 1:-1] == approx(Va[1:-1, 1:-1], abs=0.1)
 
 
 def test_poisson_2d_unity_dielectric():
@@ -133,6 +134,7 @@ def test_gauss_1d_coax():
     Q = np.array([-2*np.pi*X[i]*fdm.gauss_1d(X, V, er, i) for i in range(1, len(X) - 1)])
     Qa = cc.charge(v1)
     assert Q == approx(Qa, rel=0.01)
+
 
 def test_poisson_1d_bc():
     X = np.linspace(0, 5, 5)
@@ -487,11 +489,11 @@ def test_poisson_3d_sphere_2layer():
         (False, False, False),
         (True, False, False),
         (False, True, False),
-        (True, True, False),    #TODO xy sym fails
+        (True, True, False),    # TODO xy sym fails
         (False, False, True),
-        (True, False, True),    #TODO xz sym fails
-        (False, True, True),    #TODO yz sym fails
-        (True, True, True)      #TODO xyz sym fails
+        (True, False, True),    # TODO xz sym fails
+        (False, True, True),    # TODO yz sym fails
+        (True, True, True)      # TODO xyz sym fails
     ],
 )
 def test_poisson_3d_sphere_sym(xsym, ysym, zsym):

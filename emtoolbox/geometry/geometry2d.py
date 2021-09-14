@@ -14,13 +14,13 @@ class Geometry():
 
     def add_child(self, new_child):
         self.children.append(new_child)
-    
+
     def hit(self, x, y):
         for child in reversed(self.children):
             if child.hit(x, y):
                 return child.positive
         return False
-    
+
     def bounds(self):
         if len(self.children) == 0:
             raise Exception('Geometry has no children')
@@ -53,7 +53,7 @@ class Geometry():
             for j, yi in enumerate(y):
                 result[i, j] = self.hit(xi, yi)
         return result
-    
+
     def child_at(self, x, y):
         for child in reversed(self.children):
             if child.hit(x, y):
@@ -76,7 +76,7 @@ class Shape():
         self.positive = True
         self.name = 'Shape'
         self.params = {}
-    
+
     def hit(self, x, y) -> bool:
         return False
 
@@ -89,11 +89,11 @@ class Rect(Shape):
         self.width = width
         self.top = top
         self.height = height
-    
+
     @property
     def right(self):
         return self.left + self.width
-    
+
     @property
     def bottom(self):
         return self.top - self.height
@@ -115,7 +115,7 @@ class Circ(Shape):
     @property
     def left(self):
         return self.mid_x - self.radius
-    
+
     @property
     def top(self):
         return self.mid_y + self.radius
@@ -123,7 +123,7 @@ class Circ(Shape):
     @property
     def right(self):
         return self.mid_x + self.radius
-    
+
     @property
     def bottom(self):
         return self.mid_y - self.radius

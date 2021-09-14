@@ -10,7 +10,7 @@ class MtlNetwork():
         self.load_z = load_z
 
     def reflection(self, f, position=None):
-        '''Calculate the reflection coefficient, where 
+        '''Calculate the reflection coefficient, where
         position = none returns the coefficient at the load'''
         zc = self.tline.char_impedance()
         refl = (self.load_z - zc) / (self.load_z + zc)
@@ -18,12 +18,12 @@ class MtlNetwork():
             refl *= np.exp(2 * self.tline.prop_const(f) *
                            (position - self.tline.length))
         return refl
-    
+
     def input_impedance(self, f, position=0):
         '''Solve for input impedance at the given position'''
         refl = self.reflection(f, position)
         return self.tline.char_impedance() * (1 + refl) / (1 - refl)
-    
+
     def solve(self, f, source_v):
         '''Solve for forward and backward travelling voltages [Vfwd, Vbwd]'''
         zc = self.tline.char_impedance()
@@ -42,14 +42,14 @@ class MtlNetwork():
         jbz = self.tline.prop_const(f) * position
         A = np.array([np.exp(-jbz), np.exp(jbz)])
         return A @ solution
-    
+
     def get_current(self, f, solution, position):
         '''Get current along the line, where solution comes from solve()'''
         jbz = self.tline.prop_const(f) * position
         zc = self.tline.char_impedance()
         A = np.array([np.exp(-jbz) / zc, -np.exp(jbz) / zc])
         return A @ solution
-    
+
     def vswr(self, f):
         refl = abs(self.reflection(f))
         if refl < 1:

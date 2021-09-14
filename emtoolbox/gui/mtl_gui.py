@@ -6,6 +6,7 @@ import emtoolbox.gui.helpers as hlp
 from emtoolbox.gui.mtl_editor import MtlEditor
 from emtoolbox.utils.constants import CHR_OHM
 
+
 class MtlFrame(wx.Frame):
     '''Top level frame for the multi-conductor transmission line solvers'''
     def __init__(self, parent=None, id=-1,

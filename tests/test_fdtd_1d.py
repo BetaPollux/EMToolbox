@@ -8,6 +8,7 @@ from emtoolbox.utils.constants import ETA0, COND_CU
 import emtoolbox.fdtd.fdtd_1d as fdtd
 import emtoolbox.shielding.planar_shield as shield
 
+
 @pytest.mark.parametrize(
     "er, cond, f",
     [   # TODO accuracy issues with certain cases

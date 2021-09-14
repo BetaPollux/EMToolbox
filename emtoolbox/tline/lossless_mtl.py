@@ -9,10 +9,10 @@ class ZcMtl():
         self.velocity = velocity
         self.L = zc / self.velocity
         self.C = 1 / (zc * self.velocity)
-    
+
     def inductance(self):
         return np.array([[self.L]])
-    
+
     def capacitance(self):
         return np.array([[self.C]])
 
@@ -46,7 +46,7 @@ class LosslessMtl():
         if units == 'deg' or units == 'deg/m':
             return np.rad2deg(beta)
         return beta
-    
+
     def attn_const(self, f):
         return np.zeros_like(f)
 

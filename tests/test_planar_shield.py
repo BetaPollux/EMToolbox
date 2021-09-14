@@ -6,6 +6,7 @@ from pytest import approx
 import emtoolbox.shielding.planar_shield as ps
 from emtoolbox.utils.constants import ETA0, COND_CU
 
+
 @pytest.mark.parametrize(
     "er, ur, cond, f, result",
     [

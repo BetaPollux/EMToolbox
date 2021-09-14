@@ -22,6 +22,7 @@ def test_rect_hit(x, y, result):
     rect = gm.Rect(0.5, 2.0, 1.0, 0.5)
     assert rect.hit(x, y) == result
 
+
 @pytest.mark.parametrize(
     "x, y, result",
     [

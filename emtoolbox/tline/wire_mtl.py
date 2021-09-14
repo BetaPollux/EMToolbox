@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 
-'''Multi-conductor transmission line with round wires'''
+"""Multi-conductor transmission line with round wires."""
 
 import numpy as np
 from emtoolbox.utils.constants import MU0, EPS0
@@ -9,11 +9,18 @@ import emtoolbox.fields.poisson_fdm as fdm
 
 
 class WireMtl():
+    """Multi-conductor transmission line composed of round wires.
+
+    The reference conductor can be a wire, plane, or round shield
+    """
+
     def __init__(self, wires: list, ref, er: float = 1.0):
-        '''Create a wire-type MTL with the given wires.
+        """Create a wire-type MTL with the given wires.
+
         The wires are provided as Wire objects
         The wires are immersed in a relative permittivity of er
-        ref is the reference conductor, of type Wire, Plane or Shield'''
+        ref is the reference conductor, of type Wire, Plane or Shield
+        """
         if type(ref) not in (Wire, Plane, Shield):
             raise TypeError('ref must be wire, plane or shield')
         if len(wires) < 1:
@@ -25,9 +32,9 @@ class WireMtl():
         self.wires = wires
         self.er = er
         self.ref = ref
-    
+
     def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
-        '''Calculate the capacitance matrix'''
+        """Calculate and return the capacitance matrix."""
         if method is None or method.lower() == 'ana':
             return MU0 * EPS0 * self.er * np.linalg.inv(self.inductance())
         elif method.lower() == 'fdm':
@@ -76,7 +83,7 @@ class WireMtl():
             raise Exception(f'Invalid method specified: {method}')
 
     def inductance(self) -> np.ndarray:
-        '''Calculate the inductance matrix'''
+        """Calculate and return the inductance matrix."""
         L = np.zeros((len(self.wires), len(self.wires)))
         for i, wi in enumerate(self.wires):
             L[i, i] = wire_self_inductance(wi, self.ref)
@@ -88,9 +95,11 @@ class WireMtl():
 
 
 def wire_capacitance(s: float, rw1: float, rw2: float = None, er: float = 1.0) -> float:
-    '''Capacitance between two wires, immersed in a homogenous dielectric medium
+    """Capacitance between two wires, immersed in a homogenous dielectric medium.
+
     Center-to-center separation s with individual wire radii rw1 and rw2.
-    Units are arbitrary but must be consistent'''
+    Units are arbitrary but must be consistent
+    """
     if rw2:
         if s < rw1 + rw2:
             raise Exception('Separation must be greater than sum of radii')
@@ -103,12 +112,14 @@ def wire_capacitance(s: float, rw1: float, rw2: float = None, er: float = 1.0) -
 
 
 def wire_inductance(s: float, rw1: float, rw2: float = None) -> float:
-    '''Inductance between two wires in a non-magnetic medium
+    """Inductance between two wires in a non-magnetic medium.
+
     Center-to-center separation s with individual wire radii rw1 and rw2.
-    Units are arbitrary but must be consistent'''
+    Units are arbitrary but must be consistent
+    """
     if rw2:
         if s < rw1 + rw2:
-            raise Exception('Separation must be greater than sum of radii')    
+            raise Exception('Separation must be greater than sum of radii')
         return MU0 / (2 * np.pi) * (
             np.arccosh((s**2 - rw1**2 - rw2**2) / (2 * rw1 * rw2)))
     else:
@@ -118,8 +129,10 @@ def wire_inductance(s: float, rw1: float, rw2: float = None) -> float:
 
 
 def wire_self_inductance(wire, ref):
-    '''Inductance between wire and reference conductor
-    Uses widely separated assumption'''
+    """Inductance between wire and reference conductor.
+
+    Uses widely separated assumption
+    """
     if type(ref) == Wire:
         di0 = wire.distance_to(ref)
         rw0 = ref.radius
@@ -140,8 +153,10 @@ def wire_self_inductance(wire, ref):
 
 def wire_mutual_inductance(wire_i, wire_j, ref):
     # di0: float, dj0: float, dij: float, rw0: float):
-    '''Inductance between wire i and wire j, with reference wire 0
-    Uses widely separated assumption, di0/rw > 4'''
+    """Inductance between wire i and wire j, with reference wire 0.
+
+    Uses widely separated assumption, di0/rw > 4
+    """
     if type(ref) == Wire:
         rw0 = ref.radius
         di0 = wire_i.distance_to(ref)
@@ -159,8 +174,8 @@ def wire_mutual_inductance(wire_i, wire_j, ref):
         dj = wire_j.offset()
         tij = wire_i.angle_to(wire_j)
         return MU0 / (2 * np.pi) * np.log(dj / rs * np.sqrt(
-            ((di*dj)**2 + rs**4 - 2* di * dj * rs**2 * np.cos(tij)) /
-            ((di*dj)**2 + dj**4 - 2* di * dj**3 * np.cos(tij))
+            ((di*dj)**2 + rs**4 - 2 * di * dj * rs**2 * np.cos(tij)) /
+            ((di*dj)**2 + dj**4 - 2 * di * dj**3 * np.cos(tij))
         ))
     else:
         raise Exception('Unrecognized reference type')

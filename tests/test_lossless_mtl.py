@@ -22,6 +22,7 @@ def test_wavelength(freq, result):
     tline = LosslessMtl(ZcMtl(ZC), length=1.0)
     assert tline.wavelength(freq) == approx(result, rel=0.001)
 
+
 @pytest.mark.parametrize(
     "freq, result",
     [
@@ -34,8 +35,10 @@ def test_n_wavelengths(freq, result):
     tline = LosslessMtl(ZcMtl(ZC), length=1.0)
     assert tline.n_wavelengths(freq) == approx(result, rel=0.001)
 
+
 def test_velocity():
     assert LosslessMtl(ZcMtl(ZC)).velocity() == approx(VP0)
+
 
 @pytest.mark.parametrize(
     "length, result",
@@ -49,9 +52,11 @@ def test_delay(length, result):
     tline = LosslessMtl(ZcMtl(ZC), length=length)
     assert tline.delay() == approx(result, rel=0.001)
 
+
 def char_impedance():
     tline = LosslessMtl(ZcMtl(ZC))
     assert tline.char_impedance() == approx(ZC, rel=0.001)
+
 
 @pytest.mark.parametrize(
     "freq, result",
@@ -65,6 +70,7 @@ def test_phase_const(freq, result):
     tline = LosslessMtl(ZcMtl(ZC))
     assert tline.phase_const(freq) == approx(result, rel=0.001)
     assert tline.prop_const(freq) == approx(1.j * result, rel=0.001)
+
 
 @pytest.mark.parametrize(
     "n, result",
@@ -80,6 +86,7 @@ def test_chain_param(n, result):
     length = n * VP0 / freq
     tline = LosslessMtl(ZcMtl(ZC), length=length)
     assert tline.chain_param(freq) == approx(result, rel=0.001)
+
 
 def test_attn_const():
     f = [1, 10, 100]

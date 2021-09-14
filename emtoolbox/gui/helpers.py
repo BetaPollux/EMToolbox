@@ -5,6 +5,7 @@
 import sys
 import wx
 
+
 def pack_input_params(name: str, label: str, default: str = '') -> dict:
     '''Pack input field parameters into a dictionary,
     as required by the create field set functions'''
@@ -12,12 +13,14 @@ def pack_input_params(name: str, label: str, default: str = '') -> dict:
             'label': label,
             'default': default}
 
+
 def pack_choice_item(name: str, label: str, choices: list) -> dict:
     '''Pack choice field parameters into a dictionary,
     as required by the create field set functions'''
     return {'name': name,
             'label': label,
             'choices': choices}
+
 
 def parse_input_fields(parent: wx.Window, fields: list, convert: type = None) -> dict:
     '''Find text input fields by name and collect their values.
@@ -127,6 +130,7 @@ def layout_buttons(buttons: list) -> wx.Sizer:
     for btn in buttons:
         btn_sizer.Add(btn, 0, wx.ALL, 5)
     return btn_sizer
+
 
 def layout_fields(fields: list):
     '''Create a sizer containing all fields

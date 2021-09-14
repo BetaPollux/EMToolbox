@@ -5,6 +5,7 @@ from emtoolbox.utils.constants import MU0, EPS0
 
 # TODO remove **_ and fix calling code
 
+
 def impedance(radius_w: float, radius_s: float, epsr: float, **_) -> float:
     '''Calculate characteristic impedance, assuming a DC lossless line
     Arguments:
@@ -15,6 +16,7 @@ def impedance(radius_w: float, radius_s: float, epsr: float, **_) -> float:
         impedance (units: ohms)'''
     return math.sqrt(MU0 / (EPS0 * epsr)) * math.log(radius_s / radius_w) / (2 * math.pi)
 
+
 def inductance(radius_w: float, radius_s: float, **_) -> float:
     '''Calculate inductance per unit length.
     Arguments:
@@ -23,6 +25,7 @@ def inductance(radius_w: float, radius_s: float, **_) -> float:
     Return:
         inductance (units: henries/meter)'''
     return MU0 / (2 * math.pi) * math.log(radius_s / radius_w)
+
 
 def capacitance(radius_w: float, radius_s: float, epsr: float, **_) -> float:
     '''Calculate capacitance per unit length.
@@ -34,6 +37,7 @@ def capacitance(radius_w: float, radius_s: float, epsr: float, **_) -> float:
         capacitance (units: farads/meter)'''
     return 2 * math.pi * EPS0 * epsr / math.log(radius_s / radius_w)
 
+
 def conductance_simple(radius_w: float, radius_s: float, cond_d: float, **_):
     '''Calculate conductance per unit length
     Dielectricl model is a simple conductor.
@@ -44,6 +48,7 @@ def conductance_simple(radius_w: float, radius_s: float, cond_d: float, **_):
     Return:
         conductance (units: siemens/meter)'''
     return 2 * math.pi * cond_d / math.log(radius_s / radius_w)
+
 
 def conductance_loss_tangent(radius_w: float, radius_s: float,
                              epsr: float, loss_tangent: float, **_):
@@ -58,6 +63,7 @@ def conductance_loss_tangent(radius_w: float, radius_s: float,
         conductance(w)  function of w (units: siemens/meter)'''
     return lambda w: 2 * math.pi * w * loss_tangent * EPS0 * epsr / math.log(radius_s / radius_w)
 
+
 def resistance_dc(radius_w: float, cond_c: float, **_):
     '''Calculate resistance per unit length, assuming DC.
     Neglects resistance of the shield conductor.
@@ -68,6 +74,7 @@ def resistance_dc(radius_w: float, cond_c: float, **_):
         resistance (units: ohm/meter)'''
     return 1.0 / (math.pi * cond_c * radius_w ** 2)
 
+
 def resistance_skin_effect(radius_w: float, cond_c: float, **_):
     '''Calculate resistance per unit length, assuming simple skin effect.
     Neglects resistance of the shield conductor.
@@ -77,7 +84,8 @@ def resistance_skin_effect(radius_w: float, cond_c: float, **_):
     Return:
         resistance(w)   function of w (units: ohm/meter)'''
     # TODO invalid at low frequency
-    return lambda w: math.sqrt((w * MU0)/ (2 * math.pi ** 2 * cond_c)) / (2 * radius_w)
+    return lambda w: math.sqrt((w * MU0) / (2 * math.pi ** 2 * cond_c)) / (2 * radius_w)
+
 
 if __name__ == '__main__':
     RW = 1e-3

@@ -7,6 +7,7 @@ from pytest import approx
 from emtoolbox.tline.lossless_mtl import LosslessMtl, ZcMtl
 from emtoolbox.tline.mtl_network import MtlNetwork
 
+
 def pol2rect(mag, deg):
     return cmath.rect(mag, np.deg2rad(deg))
 
@@ -31,7 +32,6 @@ def test_network1():
     assert network.get_voltage(f, sol, 0) == approx(pol2rect(20.55, 121.3), rel=0.001)
     assert network.get_voltage(f, sol, length) == approx(pol2rect(89.6, -50.45), rel=0.001)
     assert network.vswr(f) == approx(29.21, rel=0.001)
-
 
 
 @pytest.mark.parametrize(
