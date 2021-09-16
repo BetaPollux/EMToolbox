@@ -7,6 +7,6 @@ setup(
     name='EMToolBox',
     version=1.0,
     description='Electromagnetics Tool Box',
-    authosr='BetaPollux',
+    author='BetaPollux',
     py_modules=['tline']
 )

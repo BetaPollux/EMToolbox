@@ -35,6 +35,8 @@ class WireMtl():
 
     def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
         """Calculate and return the capacitance matrix."""
+        for wire in self.wires:  # Insulation is not yet supported
+            assert wire.ins_thickness == 0.0
         if method is None or method.lower() == 'ana':
             return MU0 * EPS0 * self.er * np.linalg.inv(self.inductance())
         elif method.lower() == 'fdm':
