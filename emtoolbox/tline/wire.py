@@ -41,7 +41,7 @@ class Wire():
 class Plane():
     """Infinite plane located at (x, 0)."""
 
-    def __init__(self, width: float = 50e-3, thickness: float = 0.5e-3):
+    def __init__(self, width: float = 0.1, thickness: float = 0.1e-3):
         self.width = width
         self.thickness = thickness
 

@@ -5,6 +5,8 @@
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import numpy as np
+import subprocess
+import re
 
 
 class Segment():
@@ -267,6 +269,29 @@ def plot_list_file(filename):
     return ax
 
 
+def run_fastercap(list_file: str,
+                  exe: str = r'C:\Program Files (x86)\FastFieldSolvers\FasterCap\FasterCap.exe'):
+    output = subprocess.run([exe, f'-b {list_file} -a0.01'],
+                            capture_output=True, text=True)
+    if output.returncode != 0:
+        raise RuntimeError(
+            f'FasterCap exited with error code {output.returncode}')
+    last_iter = output.stdout.rfind('Iteration number #')
+    result = output.stdout[last_iter:]
+    dim = re.search(r"^Dimension (\d+) x (\d+)",
+                    result, flags=re.MULTILINE)
+    matrix_iter = re.finditer(r"^g(\d+)_\S+\s+(.+)",
+                              result, flags=re.MULTILINE)
+    if dim is None or matrix_iter is None:
+        raise ValueError('FasterCap run was unsuccessful')
+    capacitance = np.zeros((int(dim.group(1)), int(dim.group(2))))
+    for line in matrix_iter:
+        row = int(line.group(1)) - 1
+        # TODO this does not handle complex valued results
+        capacitance[row, :] = [float(col) for col in line.group(2).split()]
+    return capacitance
+
+
 if __name__ == '__main__':
     print('FastCap2d')
     seg = Segment.make_segment('S inner_shell 0.098768907 0.015642989  0.095105938 0.030900818 ')
@@ -285,6 +310,8 @@ if __name__ == '__main__':
     save_segments('box.txt', generate_box_segments(1.0, 0.5),
                   'Rectangular box, 1.0 m x 0.5 m')
     box = Segment.read_file('box.txt')
+
+    print(run_fastercap('three_line_bus_2d.lst'))
 
     fig, ax = plt.subplots()
     plot_segments(ax, arc1, color='b')
