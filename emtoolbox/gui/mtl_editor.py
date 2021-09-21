@@ -4,13 +4,13 @@
 
 import wx
 import wx.grid
+import numpy as np
 import emtoolbox.gui.helpers as hlp
 from emtoolbox.gui.mtl_canvas import MtlCanvas
 from emtoolbox.gui.mtl_plotter import MtlPlotter
 import emtoolbox.utils.constants as const
 from emtoolbox.tline.wire_mtl import WireMtl
 from emtoolbox.tline.wire import Wire, Plane, Shield
-from emtoolbox.tline.lossless_mtl import LosslessMtl
 
 
 DEFAULT_RS = 3e-3
@@ -71,7 +71,8 @@ class MtlEditor(wx.Dialog):
             pass
 
     def OnPlot(self, event):
-        mtl = LosslessMtl(self.get_mtl())
+        freq = np.logspace(2, 9, 201)
+        mtl = self.get_mtl().get_tline(freq)
         plotter = MtlPlotter(mtl, parent_window=self)
         plotter.Show()
 

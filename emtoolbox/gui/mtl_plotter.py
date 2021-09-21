@@ -12,10 +12,11 @@ class MtlPlotter():
         self.init_plot_frame(self.tline, self.plot_frame)
 
     def init_plot_frame(self, tline, frame):
-        f = np.logspace(2, 9, 201)
-        zc = tline.char_impedance() * np.ones_like(f)
-        attn = tline.attn_const(f) * np.ones_like(f)
-        velocity = tline.velocity() * np.ones_like(f)
+        assert tline.L.size == 1  # TODO handles only 2-conductor lines
+        zc = np.abs(tline.impedance().ravel())
+        attn = tline.attn_const().ravel()
+        velocity = tline.velocity().ravel()
+
         pages = (
             ('Characteristic Impedance', f'|Zc| ({CHR_OHM})',
                 (zc, '|Zc|')),
@@ -29,7 +30,7 @@ class MtlPlotter():
             page = frame.add_page(title)
             page.set_axis('Frequency (Hz)', units, xscale='log')
             for y_data, label in curves:
-                page.plot(f, y_data, label=label)
+                page.plot(tline.freq, y_data, label=label)
             page.set_legend()
             page.set_grid()
 

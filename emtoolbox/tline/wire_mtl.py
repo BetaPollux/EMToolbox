@@ -5,6 +5,7 @@
 import numpy as np
 from emtoolbox.utils.constants import MU0, EPS0
 from emtoolbox.tline.wire import Wire, Plane, Shield
+from emtoolbox.tline.tline import TLine
 import emtoolbox.fields.poisson_fdm as fdm
 
 
@@ -32,6 +33,9 @@ class WireMtl():
         self.wires = wires
         self.er = er
         self.ref = ref
+
+    def get_tline(self, freq) -> TLine:
+        return TLine(freq, self.inductance(), self.capacitance())
 
     def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
         """Calculate and return the capacitance matrix."""

@@ -23,17 +23,17 @@ def solve(inputs: dict, parent_window=None) -> dict:
     freq_start = float(inputs.get('freq_start', 100e3))
     freq_stop = float(inputs.get('freq_stop', 1e9))
 
-    tline = TLine(tline_l, tline_c, length, tline_r, tline_g)
-    network = TerminatedTLine(tline, zs, zl, 1.0)
-
     n = 400
     f = np.geomspace(freq_start, freq_stop, n)
-    w = 2 * np.pi * f
-    src = np.abs(network.solve(w, 0))
-    load = np.abs(network.solve(w, length))
-    zc = np.abs(tline.impedance(w))
-    attn = tline.attn_const(w)
-    velocity = tline.velocity(w)
+
+    tline = TLine(f, tline_l, tline_c, length, tline_r, tline_g)
+    network = TerminatedTLine(tline, zs, zl, 1.0)
+
+    src = np.abs(network.solve(0))
+    load = np.abs(network.solve(length))
+    zc = np.abs(tline.impedance())
+    attn = tline.attn_const()
+    velocity = tline.velocity()
 
     pages = (('Voltage', 'Voltage (V)',
               (src[0], 'Source'), (load[0], 'Load')),
@@ -55,13 +55,12 @@ def solve(inputs: dict, parent_window=None) -> dict:
         page.set_grid()
     frame.Show()
 
-    calc_f = 10e6
-    calc_w = 2 * np.pi * calc_f
+    calc_f = tline.freq[-1]
     results = {'frequency': f'{calc_f:.3e}',
-               'tline_td': f'{tline.delay(calc_w):.3e}',
+               'tline_td': f'{tline.delay()[0]:.3e}',
                'tline_zc': '{:.3f} ohm, {:.3f} rad'.format(
-                   *cmath.polar(tline.impedance(calc_w))),
-               'tline_vp': f'{tline.velocity(calc_w):.3e}',
-               'tline_attn': f"{tline.attn_const(calc_w, units='db'):.3f}",
-               'tline_phase': f"{tline.phase_const(calc_w, units='deg'):.3f}"}
+                   *cmath.polar(tline.impedance()[0])),
+               'tline_vp': f'{tline.velocity()[0]:.3e}',
+               'tline_attn': f"{tline.attn_const(units='db')[0]:.3f}",
+               'tline_phase': f"{tline.phase_const(units='deg')[0]:.3f}"}
     return results
