@@ -13,7 +13,7 @@ class MtlPlotter():
 
     def init_plot_frame(self, tline, frame):
         assert tline.L.size == 1  # TODO handles only 2-conductor lines
-        zc = np.abs(tline.impedance().ravel())
+        zc = np.abs(tline.char_impedance().ravel())
         attn = tline.attn_const().ravel()
         velocity = tline.velocity().ravel()
 

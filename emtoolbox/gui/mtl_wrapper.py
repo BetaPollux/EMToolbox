@@ -4,7 +4,8 @@
 
 import cmath
 import numpy as np
-from emtoolbox.tline.tline import TLine, TerminatedTLine
+from emtoolbox.tline.tline import TLine
+from emtoolbox.tline.mtl_network import MtlNetwork
 from emtoolbox.gui.plot_frame import PlotFrame
 from emtoolbox.utils.constants import CHR_OHM
 
@@ -23,15 +24,16 @@ def solve(inputs: dict, parent_window=None) -> dict:
     freq_start = float(inputs.get('freq_start', 100e3))
     freq_stop = float(inputs.get('freq_stop', 1e9))
 
-    n = 400
-    f = np.geomspace(freq_start, freq_stop, n)
+    # TODO only 1 frequency due to MtlNetwork.solve implementation
+    # n = 400
+    # f = np.geomspace(freq_start, freq_stop, n)
+    f = freq_start
 
-    tline = TLine(f, tline_l, tline_c, length, tline_r, tline_g)
-    network = TerminatedTLine(tline, zs, zl, 1.0)
-
+    tline = TLine(tline_l, tline_c, freq=f, length=length, R=tline_r, G=tline_g)
+    network = MtlNetwork(tline, zs, zl)
     src = np.abs(network.solve(0))
     load = np.abs(network.solve(length))
-    zc = np.abs(tline.impedance())
+    zc = np.abs(tline.char_impedance())
     attn = tline.attn_const()
     velocity = tline.velocity()
 
@@ -50,17 +52,18 @@ def solve(inputs: dict, parent_window=None) -> dict:
         page = frame.add_page(title)
         page.set_axis('Frequency (Hz)', units, xscale='log')
         for y_data, label in curves:
-            page.plot(f, y_data, label=label)
+            page.plot(f, y_data, label=label, marker='x')
         page.set_legend()
         page.set_grid()
     frame.Show()
 
-    calc_f = tline.freq[-1]
+    # TODO will need update for multiple frequencies
+    calc_f = f
     results = {'frequency': f'{calc_f:.3e}',
-               'tline_td': f'{tline.delay()[0]:.3e}',
+               'tline_td': f'{tline.delay():.3e}',
                'tline_zc': '{:.3f} ohm, {:.3f} rad'.format(
-                   *cmath.polar(tline.impedance()[0])),
-               'tline_vp': f'{tline.velocity()[0]:.3e}',
-               'tline_attn': f"{tline.attn_const(units='db')[0]:.3f}",
-               'tline_phase': f"{tline.phase_const(units='deg')[0]:.3f}"}
+                   *cmath.polar(tline.char_impedance())),
+               'tline_vp': f'{tline.velocity():.3e}',
+               'tline_attn': f"{tline.attn_const(units='db'):.3f}",
+               'tline_phase': f"{tline.phase_const(units='deg'):.3f}"}
     return results

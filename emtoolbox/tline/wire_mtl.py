@@ -35,7 +35,7 @@ class WireMtl():
         self.ref = ref
 
     def get_tline(self, freq) -> TLine:
-        return TLine(freq, self.inductance(), self.capacitance())
+        return TLine(self.inductance(), self.capacitance(), freq=freq)
 
     def capacitance(self, /, method: str = None, fdm_params: dict = {}) -> np.ndarray:
         """Calculate and return the capacitance matrix."""

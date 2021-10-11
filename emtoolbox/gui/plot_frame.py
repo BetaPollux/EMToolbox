@@ -44,8 +44,8 @@ class PlotTab(wx.Panel):
     def set_grid(self, ax: int = 0):
         self.axes[ax].grid()
 
-    def plot(self, x, y, label: str = None, ax: int = 0):
-        self.axes[ax].plot(x, y, label=label)
+    def plot(self, x, y, label: str = None, ax: int = 0, **kwargs):
+        self.axes[ax].plot(x, y, label=label, **kwargs)
 
 
 class PlotFrame(wx.Frame):

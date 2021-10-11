@@ -1,5 +1,14 @@
 #! /usr/bin/python3
 
+"""
+Transmission Line class.
+
+Interal model is based on RLGC parameters at some given frequency.
+Parameters can be scalars or an array, when multiple frequencies are provided.
+
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 try:
@@ -7,38 +16,13 @@ try:
 except ImportError:
     VP0 = 3e8
 
-
-class TerminatedTLine:
-    def __init__(self, tline, zs, zl, vs):
-        self.tline = tline
-        self.zs = zs
-        self.zl = zl
-        self.vs = vs
-
-    def reflection(self, z):
-        zc = self.tline.impedance()
-        refl = (self.zl - zc) / (self.zl + zc)
-        return refl * np.exp(2 * self.tline.prop_const() *
-                             (z - self.tline.length))
-
-    def input_impedance(self, z=0):
-        refl = self.reflection(z)
-        return self.tline.impedance() * (1 + refl) / (1 - refl)
-
-    def solve(self, z):
-        zc = self.tline.impedance()
-        y = self.tline.prop_const()
-        refl = (self.zl - zc) / (self.zl + zc)
-        refs = (self.zs - zc) / (self.zs + zc)
-        a = np.exp(-2 * y * self.tline.length)
-        b = np.exp(2 * y * z)
-        v = (1 + refl * a * b) / (1 - refs * refl * a) * zc
-        i = (1 - refl * a * b) / (1 - refs * refl * a)
-        return self.vs / (zc + self.zs) * np.exp(-y * z) * np.array([v, i])
+DEF_FREQ = 1e6
+DEF_ER = 1.0
+DEF_LENGTH = 1.0
 
 
 class TLine:
-    def __init__(self, freq, L, C, length=1.0, R=0, G=0):
+    def __init__(self, L, C, *, R=0, G=0, freq=DEF_FREQ, length=DEF_LENGTH):
         self.length = length
         self.freq = freq
         self.R = R
@@ -47,15 +31,34 @@ class TLine:
         self.C = C
 
     @classmethod
-    def create_lowloss(cls, freq, zc, er, length=1.0, R=0, G=0):
-        vp = VP0 / np.sqrt(er)
+    def create_lowloss(cls, zc, *, freq=DEF_FREQ, **kwargs):
+        """Create a lowloss tranmissions line.
+        
+        zc - characteristic impedance
+        freq - frequency for parameters, Hertz
+
+        Options:
+        R - resistance, ohms/meter
+        G - conductance, siemens/meter
+        er - relative dielectric constant, unitless
+        vp - velocity of propagation, meters/second
+        length - length, meters
+        """
+        # TODO add support for td, and validate inputs
+        if 'er' in kwargs and 'vp' in kwargs:
+            raise ValueError('Cannot specify both er and vp')
+        elif 'er' in kwargs:
+            vp = VP0 / np.sqrt(kwargs['er'])
+        elif 'vp' in kwargs:
+            vp = kwargs['vp']
+        else:
+            vp = VP0
         L = zc / vp
         C = 1 / (zc * vp)
-        return cls(freq, L, C, length=length, R=R, G=G)
-
-    @classmethod
-    def create_lossless(cls, freq, zc, er, length=1.0):
-        return cls.create_lowloss(freq, zc, er, length)
+        R = kwargs.get('R', 0)
+        G = kwargs.get('G', 0)
+        length = kwargs.get('length', 1.0)
+        return cls(L, C, R=R, G=G, freq=freq, length=length)
 
     def wavelength(self):
         return self.velocity() / self.freq
@@ -69,7 +72,7 @@ class TLine:
     def delay(self):
         return self.length / self.velocity()
 
-    def impedance(self):
+    def char_impedance(self):
         return np.sqrt((self.R + 2.j * np.pi * self.freq * self.L) /
                        (self.G + 2.j * np.pi * self.freq * self.C))
 
@@ -90,7 +93,7 @@ class TLine:
     def chain_param(self):
         a = np.cosh(self.prop_const() * self.length)
         b = np.sinh(self.prop_const() * self.length)
-        zc = self.impedance()
+        zc = self.char_impedance()
         return np.array([[a, -b * zc],
                          [-b / zc, a]])
 
@@ -106,30 +109,9 @@ if __name__ == '__main__':
     Zl = 100
 
     print('--- Lossless ---')
-    line = TLine.create_lossless(f, Zc, er, length)
+    line = TLine.create_lossless(Zc, freq=f, er=er, length=length)
     print(f'{line.L:.3e}, {line.C:.3e}, {line.velocity():.3e}, {line.delay():.3e}')
     print('attn', line.attn_const())
     print('phase', line.phase_const())
     print('chain\n', line.chain_param())
-    print('impedance', line.impedance())
-
-    print('--- Terminated Tline ---')
-    network = TerminatedTLine(line, Zs, Zl, Vs)
-    z = np.linspace(0, length, 100)
-    sol = network.solve(z)
-    src = sol[:, 0]
-    load = sol[:, -1]
-    print(f'Zin(0) {abs(network.input_impedance()):.3f}')
-    print(f'Current {abs(src[1]):.3f} {abs(load[1]):.3f}')
-    print(f'Voltage {abs(src[0]):.3f} {abs(load[0]):.3f}')
-    
-    fig, axs = plt.subplots(1, 2)
-    axs[0].plot(z, np.abs(sol[0, :]), label='V(z)')
-    axs[0].set(xlabel='Position (m)', ylabel='Voltage (V)')
-    axs[1].plot(z, 1000 * np.abs(sol[1, :]), label='I(z)')
-    axs[1].set(xlabel='Position (m)', ylabel='Current (mA)')
-    for ax in axs:
-        ax.legend()
-        ax.grid()
-
-    plt.show()
+    print('impedance', line.char_impedance())
