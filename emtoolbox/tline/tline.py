@@ -33,7 +33,7 @@ class TLine:
     @classmethod
     def create_lowloss(cls, zc, *, freq=DEF_FREQ, **kwargs):
         """Create a lowloss tranmissions line.
-        
+
         zc - characteristic impedance
         freq - frequency for parameters, Hertz
 
