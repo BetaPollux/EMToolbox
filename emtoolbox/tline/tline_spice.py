@@ -2,66 +2,36 @@
 
 '''Generate SPICE models for Transmission Lines'''
 
-'''
-L1 N002 N001 0.4µ
-C1 N001 N004 10p
-C2 N002 N004 20p
-C3 N003 N004 10p
-L2 N003 N002 0.4µ
-.backanno
-.end
-'''
-
 
 def node_str(num: int) -> str:
     return f'N{num:05d}'
 
 
-def model_str(name: str, num: int, value: float, nodes: tuple) -> str:
-    return f'{name}{num:03d} {node_str(nodes[0])} {node_str(nodes[1])} {value:.5e}\n'
+def model_str(name: str, num: int, value: float, node0: str, node1: str) -> str:
+    return f'{name}{num:03d} {node0} {node1} {value:.5e}\n'
 
 
-def get_pi_model(name: str, per_unit: dict, length: float, n_segments: int) -> str:
-    inductance = per_unit.get('l', None)
-    capacitance = per_unit.get('c', None)
-    resistance = per_unit.get('r', None)
-    conductance = per_unit.get('g', None)
-    if not inductance or not capacitance:
-        raise Exception('SPICE model requires inductance and capacitance')
-    Ls = inductance * length / n_segments
-    Cp = capacitance * length / n_segments
-
-    ref_node = 1
-    left_node = 2
-    right_node = n_segments + 2
-    if resistance:
-        right_node += n_segments
-    inductor_nodes = range(left_node, right_node, 2 if resistance else 1)
-    capacitor_nodes = range(left_node, right_node + 1, 2 if resistance else 1)
-    result = f'.SUBCKT {name} {node_str(ref_node)} {node_str(left_node)} {node_str(right_node)}\n'
-    for i, n in enumerate(inductor_nodes):
-        result += model_str('LS', i+1, Ls, (n, n+1))
-    for i, n in enumerate(capacitor_nodes):
-        if n == left_node or n == right_node:
-            cval = 0.5 * Cp
-        else:
-            cval = Cp
-        result += model_str('CP', i+1, cval, (n, ref_node))
-    if resistance:
-        Rs = resistance * length / n_segments
-        for i, n in enumerate(inductor_nodes):
-            result += model_str('RS', i+1, Rs, (n+1, n+2))
-    if conductance:
-        Gp = conductance * length / n_segments
-        for i, n in enumerate(capacitor_nodes):
-            if n == left_node or n == right_node:
-                rval = 2 / Gp
-            else:
-                rval = 1 / Gp
-            result += model_str('RP', i+1, rval, (n, ref_node))
+def pi_model_2c(N: int, *, L: float, C: float,
+                R: float = 0, R0: float = 0, G: float = 0,
+                length: float = 1.0, name: str = 'TLINE_PI') -> str:
+    assert N > 0
+    capacitors = [C * length / N] * (N + 1)
+    capacitors[0] *= 0.5
+    capacitors[-1] *= 0.5
+    inductors = [L * length / N] * N
+    nets1 = [node_str(i) for i in range(1, N)]
+    nets1.insert(0, '101')
+    nets1.append('201')
+    nets0 = ['100']
+    result = f'.SUBCKT {name} 100 101 201\n'
+    result += model_str('C11_', 1, capacitors[0], nets1[0], nets0[0])
+    for i in range(N):
+        result += model_str('L11_', i + 1, inductors[i], nets1[i], nets1[i + 1])
+        result += model_str('C11_', i + 2, capacitors[i + 1], nets1[i + 1], nets0[0])
     result += f'.ENDS {name}\n'
     return result
 
 
 if __name__ == '__main__':
-    print(model_str('LS', 32, 1.6e-6, (1, 2)))
+    for i in range(1, 4):
+        print(pi_model_2c(i, L=3e-6, C=120e-12))
