@@ -13,15 +13,14 @@ Two-segment
 100----------------------200
 '''
 
-from numpy import pi
 from emtoolbox.tline.tline_spice import pi_model_2c
 import pytest
 from pytest import approx
 
 
 @pytest.fixture
-def lc_params():
-    return {'L': 1e-6, 'C': 100e-12}
+def tline_params():
+    return {'L': 1e-6, 'C': 100e-12, 'R': 10, 'G': 1e-9}
 
 
 def get_values_of(name: str, lines: list):
@@ -41,13 +40,75 @@ def test_get_values():
     assert one[0] == 5e-6
 
 
-def test_subckt_statement(lc_params):
+def test_subckt_statement(tline_params):
     name = 'tline1'
-    result = pi_model_2c(1, name=name, **lc_params)
+    result = pi_model_2c(1, name=name, **tline_params)
     lines = result.split('\n')
-    assert lines[0] == f'.SUBCKT {name} 100 101 201'
+    assert f'.SUBCKT {name} 100 101 201' in lines
     assert lines[-2] == f'.ENDS {name}'
     assert lines[-1] == ''  # Should end with new line
+
+
+@pytest.mark.parametrize(
+    "R, G",
+    [(0, 0), (3, 0), (0, 1e-9), (3, 1e-9)]
+)
+def test_inductor_statements(R, G):
+    result = pi_model_2c(3, L=3e-6, C=120e-12, R=R, G=G)
+    lines = result.split('\n')
+    if R == 0:
+        nets = ['N00001', 'N00001', 'N00002', 'N00002', '201']
+    else:
+        nets = ['N00001', 'N00002', 'N00003', 'N00004', 'N00005']
+    assert f'L11_001 101 {nets[0]} 1.00000e-06' in lines
+    assert f'L11_002 {nets[1]} {nets[2]} 1.00000e-06' in lines
+    assert f'L11_003 {nets[3]} {nets[4]} 1.00000e-06' in lines
+
+
+@pytest.mark.parametrize(
+    "R, G",
+    [(0, 0), (3, 0), (0, 1e-9), (3, 1e-9)]
+)
+def test_capacitor_statements(R, G):
+    result = pi_model_2c(3, L=3e-6, C=120e-12, R=R, G=G)
+    lines = result.split('\n')
+    if R == 0:
+        nets = ['N00001', 'N00002']
+    else:
+        nets = ['N00002', 'N00004']
+    assert 'C11_001 101 100 2.00000e-11' in lines
+    assert f'C11_002 {nets[0]} 100 4.00000e-11' in lines
+    assert f'C11_003 {nets[1]} 100 4.00000e-11' in lines
+    assert 'C11_004 201 100 2.00000e-11' in lines
+
+
+@pytest.mark.parametrize(
+    "G",
+    [0, 1e-9]
+)
+def test_resistor_statements(G):
+    result = pi_model_2c(3, L=3e-6, C=120e-12, R=3, G=G)
+    lines = result.split('\n')
+    assert 'R1_001 N00001 N00002 1.00000e+00' in lines
+    assert 'R1_002 N00003 N00004 1.00000e+00' in lines
+    assert 'R1_003 N00005 201 1.00000e+00' in lines
+
+
+@pytest.mark.parametrize(
+    "R",
+    [0, 3]
+)
+def test_conductance_statements(R):
+    result = pi_model_2c(3, L=3e-6, C=120e-12, R=R, G=1e-9)
+    lines = result.split('\n')
+    if R == 0:
+        nets = ['N00001', 'N00002']
+    else:
+        nets = ['N00002', 'N00004']
+    assert 'RG11_001 101 100 6.00000e+09' in lines
+    assert f'RG11_002 {nets[0]} 100 3.00000e+09' in lines
+    assert f'RG11_003 {nets[1]} 100 3.00000e+09' in lines
+    assert 'RG11_004 201 100 6.00000e+09' in lines
 
 
 @pytest.mark.parametrize(
@@ -55,12 +116,12 @@ def test_subckt_statement(lc_params):
     [(1, 1.0), (3, 1.0), (100, 1.0),
     (3, 0.2), (3, 4.0), (3, 20.0)]
 )
-def test_inductance(lc_params, N, length):
-    result = pi_model_2c(N, **lc_params, length=length)
+def test_inductance(tline_params, N, length):
+    result = pi_model_2c(N, **tline_params, length=length)
     lines = result.split('\n')
     inductances = get_values_of('L11', lines)
     assert len(inductances) == N
-    assert sum(inductances) == approx(lc_params['L'] * length, rel=0.001)
+    assert sum(inductances) == approx(tline_params['L'] * length, rel=0.001)
     assert len(set(inductances)) == 1
 
 
@@ -69,12 +130,42 @@ def test_inductance(lc_params, N, length):
     [(1, 1.0), (3, 1.0), (100, 1.0),
     (3, 0.2), (3, 4.0), (3, 20.0)]
 )
-def test_capacitance(lc_params, N, length):
-    result = pi_model_2c(N, **lc_params, length=length)
+def test_capacitance(tline_params, N, length):
+    result = pi_model_2c(N, **tline_params, length=length)
     lines = result.split('\n')
     capacitances = get_values_of('C11', lines)
     assert len(capacitances) == N + 1
-    assert sum(capacitances) == approx(lc_params['C'] * length, rel=0.001)
+    assert sum(capacitances) == approx(tline_params['C'] * length, rel=0.001)
     if N > 1:
         assert len(set(capacitances)) == 2
         assert capacitances[0] == approx(0.5 * capacitances[1], rel=0.001)
+
+
+@pytest.mark.parametrize(
+    "N, length",
+    [(1, 1.0), (3, 1.0), (100, 1.0),
+    (3, 0.2), (3, 4.0), (3, 20.0)]
+)
+def test_resistance(tline_params, N, length):
+    result = pi_model_2c(N, **tline_params, length=length)
+    lines = result.split('\n')
+    resistances = get_values_of('R1', lines)
+    assert len(resistances) == N
+    assert sum(resistances) == approx(tline_params['R'] * length, rel=0.001)
+    assert len(set(resistances)) == 1
+
+
+@pytest.mark.parametrize(
+    "N, length",
+    [(1, 1.0), (3, 1.0), (100, 1.0),
+    (3, 0.2), (3, 4.0), (3, 20.0)]
+)
+def test_conductance(tline_params, N, length):
+    result = pi_model_2c(N, **tline_params, length=length)
+    lines = result.split('\n')
+    resistances = get_values_of('RG11', lines)
+    assert len(resistances) == N + 1
+    assert sum([1 / r for r in resistances]) == approx(tline_params['G'] * length, rel=0.001)
+    if N > 1:
+        assert len(set(resistances)) == 2
+        assert resistances[0] == approx(2 * resistances[1], rel=0.001)
