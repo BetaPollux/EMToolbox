@@ -13,7 +13,7 @@ Two-segment
 100----------------------200
 '''
 
-from emtoolbox.tline.tline_spice import pi_model_2c, get_inductances, get_capacitances
+from emtoolbox.tline.tline_spice import pi_model_2c, pi_model_mtl, get_inductances, get_capacitances
 import numpy as np
 import pytest
 from pytest import approx
@@ -22,6 +22,26 @@ from pytest import approx
 @pytest.fixture
 def tline_params():
     return {'L': 1e-6, 'C': 100e-12, 'R': 10, 'G': 1e-9}
+
+
+@pytest.fixture
+def mtl3c_params():
+    return {'L': np.array([[5e-7, 1e-7],
+                           [1e-7, 8e-7]]),
+            'C': np.array([[5e-11, -2e-11],
+                           [-2e-11, 7e-11]])
+    }
+
+
+@pytest.fixture
+def mtl4c_params():
+    return {'L': np.array([[5e-7, 1e-7, 2e-7],
+                           [1e-7, 8e-7, 3e-7],
+                           [2e-7, 3e-7, 6e-7]]),
+            'C': np.array([[5e-11, -2e-11, -3e-11],
+                           [-2e-11, 7e-11, -1e-11],
+                           [-3e-11, -1e-11, 9e-11]])
+    }
 
 
 def get_values_of(name: str, lines: list):
@@ -188,3 +208,115 @@ def test_get_capacitances():
     assert Ce == approx(np.array([[5.12368e-12, 5.12366e-12],
                                   [5.12366e-12, 2.39246e-12]]), rel=0.001)
 
+
+def test_3c_inductor_statements(mtl3c_params):
+    result = pi_model_mtl(1, **mtl3c_params)
+    lines = result.split('\n')
+    Le, Ke = get_inductances(mtl3c_params['L'])
+    assert f'L11_001 101 201 {Le[0]:.5e}' in lines
+    assert f'L22_001 102 202 {Le[1]:.5e}' in lines
+    assert f'K12_001 L11_001 L22_001 {Ke[0, 1]:.5e}' in lines
+
+
+def test_3c_capacitor_statements(mtl3c_params):
+    result = pi_model_mtl(1, **mtl3c_params)
+    lines = result.split('\n')
+    Ce = get_capacitances(mtl3c_params['C'])
+    assert f'C11_001 101 100 {0.5 * Ce[0, 0]:.5e}' in lines
+    assert f'C11_002 201 100 {0.5 * Ce[0, 0]:.5e}' in lines
+    assert f'C22_001 102 100 {0.5 * Ce[1, 1]:.5e}' in lines
+    assert f'C22_002 202 100 {0.5 * Ce[1, 1]:.5e}' in lines
+    assert f'C12_001 101 102 {0.5 * Ce[0, 1]:.5e}' in lines
+    assert f'C12_002 201 202 {0.5 * Ce[0, 1]:.5e}' in lines
+
+
+def test_4c_inductor_statements(mtl4c_params):
+    result = pi_model_mtl(1, **mtl4c_params)
+    lines = result.split('\n')
+    Le, _ = get_inductances(mtl4c_params['L'])
+    assert f'L11_001 101 201 {Le[0]:.5e}' in lines
+    assert f'L22_001 102 202 {Le[1]:.5e}' in lines
+    assert f'L33_001 103 203 {Le[2]:.5e}' in lines
+
+
+def test_4c_coupling_statements(mtl4c_params):
+    result = pi_model_mtl(1, **mtl4c_params)
+    lines = result.split('\n')
+    _, Ke = get_inductances(mtl4c_params['L'])
+    assert f'K12_001 L11_001 L22_001 {Ke[0, 1]:.5e}' in lines
+    assert f'K13_001 L11_001 L33_001 {Ke[0, 2]:.5e}' in lines
+    assert f'K23_001 L22_001 L33_001 {Ke[1, 2]:.5e}' in lines
+
+
+def test_4c_self_capacitor_statements(mtl4c_params):
+    result = pi_model_mtl(1, **mtl4c_params)
+    lines = result.split('\n')
+    Ce = get_capacitances(mtl4c_params['C'])
+    assert f'C11_001 101 100 {0.5 * Ce[0, 0]:.5e}' in lines
+    assert f'C11_002 201 100 {0.5 * Ce[0, 0]:.5e}' in lines
+    assert f'C22_001 102 100 {0.5 * Ce[1, 1]:.5e}' in lines
+    assert f'C22_002 202 100 {0.5 * Ce[1, 1]:.5e}' in lines
+    assert f'C33_001 103 100 {0.5 * Ce[2, 2]:.5e}' in lines
+    assert f'C33_002 203 100 {0.5 * Ce[2, 2]:.5e}' in lines
+
+
+def test_4c_mutual_capacitor_statements(mtl4c_params):
+    result = pi_model_mtl(1, **mtl4c_params)
+    lines = result.split('\n')
+    Ce = get_capacitances(mtl4c_params['C'])
+    assert f'C12_001 101 102 {0.5 * Ce[0, 1]:.5e}' in lines
+    assert f'C12_002 201 202 {0.5 * Ce[0, 1]:.5e}' in lines
+    assert f'C13_001 101 103 {0.5 * Ce[0, 2]:.5e}' in lines
+    assert f'C13_002 201 203 {0.5 * Ce[0, 2]:.5e}' in lines
+    assert f'C23_001 102 103 {0.5 * Ce[1, 2]:.5e}' in lines
+    assert f'C23_002 202 203 {0.5 * Ce[1, 2]:.5e}' in lines
+
+
+def test_4c_inductance(mtl4c_params):
+    N = 1
+    result = pi_model_mtl(N, **mtl4c_params)
+    lines = result.split('\n')
+    Le, _ = get_inductances(mtl4c_params['L'])
+    for i in range(3):
+        inductances = get_values_of(f'L{i+1}{i+1}', lines)
+        assert len(inductances) == N
+        assert sum(inductances) == approx(Le[i], rel=0.001)
+        assert len(set(inductances)) == 1
+
+
+def test_4c_coupling(mtl4c_params):
+    N = 1
+    result = pi_model_mtl(N, **mtl4c_params)
+    lines = result.split('\n')
+    _, Ke = get_inductances(mtl4c_params['L'])
+    for i in range(3):
+        for j in range(i + 1, 3):
+            couplings = get_values_of(f'K{i+1}{j+1}', lines)
+            assert len(couplings) == N
+            assert sum(couplings) == approx(Ke[i, j], rel=0.001)
+            assert len(set(couplings)) == 1
+
+
+def test_4c_capacitance(mtl4c_params):
+    N = 1
+    result = pi_model_mtl(N, **mtl4c_params)
+    lines = result.split('\n')
+    Ce = get_capacitances(mtl4c_params['C'])
+    for i in range(3):
+        capacitances = get_values_of(f'C{i+1}{i+1}', lines)
+        assert len(capacitances) == N + 1
+        assert sum(capacitances) == approx(Ce[i, i], rel=0.001)
+        assert len(set(capacitances)) == 1
+
+
+def test_4c_mutual_capacitance(mtl4c_params):
+    N = 1
+    result = pi_model_mtl(N, **mtl4c_params)
+    lines = result.split('\n')
+    Ce = get_capacitances(mtl4c_params['C'])
+    for i in range(3):
+        for j in range(i + 1, 3):
+            capacitances = get_values_of(f'C{i+1}{j+1}', lines)
+            assert len(capacitances) == N + 1
+            assert sum(capacitances) == approx(Ce[i, j], rel=0.001)
+            assert len(set(capacitances)) == 1
