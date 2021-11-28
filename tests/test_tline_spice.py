@@ -13,7 +13,8 @@ Two-segment
 100----------------------200
 '''
 
-from emtoolbox.tline.tline_spice import pi_model_2c
+from emtoolbox.tline.tline_spice import pi_model_2c, get_inductances, get_capacitances
+import numpy as np
 import pytest
 from pytest import approx
 
@@ -169,3 +170,21 @@ def test_conductance(tline_params, N, length):
     if N > 1:
         assert len(set(resistances)) == 2
         assert resistances[0] == approx(2 * resistances[1], rel=0.001)
+
+
+def test_get_inductances():
+    L = np.array([[1.11170e-6, 6.93901e-07],
+                  [6.93901e-07, 1.38780e-06]])
+    Le, Ke = get_inductances(L, length=2.54e-01)
+    assert Le == approx(np.array([2.82372e-07, 3.52501e-07]))
+    assert Ke == approx(np.array([[1.0, 5.585651e-01],
+                                  [5.585651e-01, 1.0]]), rel=0.001)
+
+
+def test_get_capacitances():
+    C = np.array([[4.03439E-11, -2.01719E-11],
+                  [-2.01719E-11, 2.95910E-11]])
+    Ce = get_capacitances(C, length=2.54e-01)
+    assert Ce == approx(np.array([[5.12368e-12, 5.12366e-12],
+                                  [5.12366e-12, 2.39246e-12]]), rel=0.001)
+

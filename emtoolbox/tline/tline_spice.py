@@ -2,6 +2,8 @@
 
 '''Generate SPICE models for Transmission Lines'''
 
+import numpy as np
+
 
 def node_str(num: int) -> str:
     return f'N{num:05d}'
@@ -49,6 +51,31 @@ def pi_model_2c(N: int, *, L: float, C: float,
             result += model_str('RG11_', i + 2, resistors_g[i + 1], nets1[c_idx[i]], nets0[0])
     result += f'.ENDS {name}\n'
     return result
+
+
+def get_inductances(L: np.ndarray, length: float):
+    '''Returns Le and Ke matrices of inductor values and coupling coefficients
+    Input is per unit inductance matrix, size N x N
+    Le are individual inductor values, size N
+    Ke are coupling coefficients, size N x N'''
+    assert L.ndim == 2
+    Le = L.diagonal() * length
+    N = L.shape[0]
+    Ke = np.zeros_like(L)
+    for i in range(N):
+        for j in range(N):
+            Ke[i, j] = L[i, j] / np.sqrt(L[i, i] * L[j, j])
+    return Le, Ke
+
+
+def get_capacitances(C: np.ndarray, length: float):
+    '''Returns Ce matrix of capacitor values
+    Input is per unit capacitance matrix, size N x N
+    Ce are individual capacitor values, size N+1 x N+1'''
+    assert C.ndim == 2
+    Ce = -length * C  # Mutual capacitances
+    np.fill_diagonal(Ce, C.sum(axis=1) * length)  # Self capacitances
+    return Ce
 
 
 if __name__ == '__main__':
